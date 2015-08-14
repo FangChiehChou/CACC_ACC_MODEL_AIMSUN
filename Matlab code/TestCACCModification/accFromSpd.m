@@ -1,0 +1,6 @@
+function accMat = accFromSpd(vehId, iTime, deltaT, ...
+    accMat,speedMat)
+   
+    accMat(iTime,vehId) = (-speedMat(iTime-1,vehId)...
+        +speedMat(iTime,vehId))/deltaT;
+    
