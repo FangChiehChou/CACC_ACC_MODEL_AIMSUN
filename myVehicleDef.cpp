@@ -2202,7 +2202,7 @@ bool myVehicleDef::CombineLCDesires()
 
 		double desire = std::_cpp_max(left_desire,right_desire);
 		//if this desire if larger than the driver's normal desire
-		if(desire>this->lane_change_prob)
+		if(desire>this->getLaneChangeDesireThrd())
 		{
 			int target_lane = 
 				left_desire>right_desire?LEFT:RIGHT;

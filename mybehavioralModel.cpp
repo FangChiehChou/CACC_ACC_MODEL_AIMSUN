@@ -449,10 +449,34 @@ A2SimVehicle *mybehavioralModel::
 			AKIConvertFromAsciiString( "look_ahead_cars");
 		res->setDLCScanNoCars(ANGConnGetAttributeValueInt(
 			ANGConnGetAttribute(dis_lookahead_cars_str), exp_id));
+
+		//lane change desires
 		const unsigned short *lane_change_desire_thrd_str = 
 			AKIConvertFromAsciiString( "lane_change_desire_thrd");
-		res->setLaneChangeDesireThrd(ANGConnGetAttributeValueDouble(
-			ANGConnGetAttribute(lane_change_desire_thrd_str), exp_id));
+		double avg_lc_desire = ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(lane_change_desire_thrd_str), exp_id);
+		
+		const unsigned short *lane_change_desire_thrd_dev_str = 
+			AKIConvertFromAsciiString( "lane_change_desire_thrd_dev");
+		double lc_desire_dev = ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(lane_change_desire_thrd_dev_str), exp_id);
+		
+		const unsigned short *lane_change_desire_thrd_min_str = 
+			AKIConvertFromAsciiString( "lane_change_desire_thrd_min");
+		double lc_desire_min = ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(lane_change_desire_thrd_min_str), exp_id);
+
+		const unsigned short *lane_change_desire_thrd_max_str = 
+			AKIConvertFromAsciiString( "lane_change_desire_thrd_max");
+		double lc_desire_max = ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(lane_change_desire_thrd_max_str), exp_id);
+
+		double lc_desire = sampleNormalDist
+			(avg_lc_desire, lc_desire_dev);
+		lc_desire = 
+			std::_cpp_min(lc_desire_max, 
+			std::_cpp_max(lc_desire, lc_desire_min));
+		res->setLaneChangeDesireThrd(lc_desire);
 
 		const unsigned short *dlc_coeff = 
 			AKIConvertFromAsciiString( "dlc_coeff");

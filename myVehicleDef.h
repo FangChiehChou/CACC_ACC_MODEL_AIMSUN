@@ -384,5 +384,6 @@ public:
 	bool HwasooGap(double maxDec,double reaction_time,double theta, 
 		double x_leader,double x,double jamGap, double l_leader, double v,
 		double lead_v,double b_estimate);
+	double getLaneChangeDesireThrd(){return lane_change_prob;}
 };
 #endif
