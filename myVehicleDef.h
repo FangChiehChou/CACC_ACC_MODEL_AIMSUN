@@ -351,7 +351,16 @@ public:
 	double getLCGapReductionFactor(){return this->lc_gap_reduction_factor;};
 	int getGapAcceptanceModel(){return this->gap_model;};
 	void setGapAcceptanceModel(int val){this->gap_model=val;};
-	bool DisGapAccepted();
+	bool DisGapAccepted(double a_L, double a_U, double tau, 
+		double headway, double jamGap, 
+		double d_leader, 
+		double l_leader, double vf, double v, 
+		double x, 
+		double x_leader, 
+		double x_leader_steps_early,
+		double lead_v, double min_headway,
+		double Gap_AC_Thrd,
+		double desire);
 	bool AccGapAccepted(double a_L, 
 		double a_U, double tau, double headway, 
 		double jamGap, double d_leader, double l_leader, double vf, 
@@ -364,6 +373,16 @@ public:
 	void setGippsTheta(double val){this->gipps_theta=val;};
 	bool AllowUnsequentialMerging(){return allow_unseqential_merging;};
 	void SetUnsequentialMerging(bool val){allow_unseqential_merging=val;};
-
+	double GippsDecelerationTerm(
+		double maxDec,double reaction_time,double theta,
+		double x_leader,double x,double jamGap,
+		double l_leader,double v,double lead_v,double b_estimate);
+	bool GippsGap(double maxDec,double reaction_time,
+		double theta, double x_leader,double x,
+		double jamGap, double l_leader, double v,
+		double lead_v,double b_estimate);
+	bool HwasooGap(double maxDec,double reaction_time,double theta, 
+		double x_leader,double x,double jamGap, double l_leader, double v,
+		double lead_v,double b_estimate);
 };
 #endif

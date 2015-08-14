@@ -231,11 +231,8 @@ bool myVehicleDef::LetAimsunHandle()
 
 void myVehicleDef::RunACCCACC()
 {
-
-	int veh_Id= getId();
-
-	if (veh_Id == 8)
-		veh_Id = veh_Id;
+	if (VehID == this->getDebugTrackID())
+		VehID = VehID;
 
 	//***********collect and record basic information
 	double	x_CF=0.0;
@@ -587,7 +584,22 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 			}
 			else
 			{
-				if(this->DisGapAccepted() == false)
+				if(this->DisGapAccepted(getMAXdec(),
+					getMAXacc(), 
+					tau*beta, 
+					headway, 
+					this->alpha*getJamGap(), 
+					d_leader, 
+					((myVehicleDef *)vehDown)->getLength(), 
+					getFreeFlowSpeed(), 
+					getSpeed(), 
+					getPosition(),
+					current_pos_down,
+					past_pos_down,
+					((myVehicleDef *)vehDown)->getSpeed(), 
+					min_headway,
+					Gap_AC_Thrd,
+					desire) == false)
 				{
 					Ok_downstream_gap = false;
 				}
@@ -661,7 +673,23 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 			}
 			else
 			{
-				if(this->DisGapAccepted() == false)
+				if(this->DisGapAccepted(
+					getMAXdec(),
+					getMAXacc(), 
+					getReactionTime()*beta, 
+					up_headway, 
+					getJamGap()*alpha, 
+					d_leader, 
+					this->getLength(), 
+					((myVehicleDef *)vehUp)->getFreeFlowSpeed(), 
+					((myVehicleDef *)vehUp)->getSpeed(), 
+					current_pos_up, 
+					this->getPosition(), 
+					early_pos, 
+					this->getSpeed(), 
+					min_headway,
+					Gap_AC_Thrd,
+					desire) == false)
 				{
 					Ok_downstream_gap = false;
 				}
@@ -978,28 +1006,12 @@ double myVehicleDef::BaseCfModel
 			getEstimateLeaderDecCoeff()
 			*maxDec;
 		double desired_headway = min_headway;
-
-		//Ciuffo, Biagio, Vincenzo Punzo, 
-		//and Marcello Montanino. 
-		//"Thirty Years of Gipps' Car-Following Model: 
-		//Applications, Developments, and New Features." 
-		//Transportation Research Record: 
-		//Journal of the Transportation Research Board 
-		//2315 (2012): 89-99. (Eq. 3)
 		double theta = this->getGippsTheta()*reaction_time;
-		double value_in_sqrt = 
-			pow(maxDec*(reaction_time+theta),2)-
-			maxDec*(2*(x_leader-x-jamGap-l_leader)-
-			v*reaction_time-lead_v*lead_v/b_estimate);
 		
-		double v_after_tau = 0;
-		if(value_in_sqrt>0)
-		{
-			v_after_tau =maxDec
-				*(reaction_time+theta)+
-				sqrt(value_in_sqrt);
-		}
-
+		double v_after_tau = GippsDecelerationTerm(
+			maxDec,reaction_time,theta,x_leader,x,jamGap,
+			l_leader,v,lead_v,b_estimate); 
+		
 		// The maximum speed based on Gipps safety criterion
 		double max_a = MIN(maxAcc, 
 		MAX(maxDec, (v_after_tau-v)/reaction_time));
@@ -2468,10 +2480,30 @@ void myVehicleDef::setReactionTime(double val)
 	this->reaction_time_ = MAX(0.01, val);
 }
 
-
-bool myVehicleDef::DisGapAccepted()
+//////////////////////////////////////////////////////////////////////////
+// this is the implementation of Hwasoo's 
+bool myVehicleDef::DisGapAccepted(double a_L, double a_U, double tau, 
+								  double headway, double jamGap, 
+								  double d_leader, 
+								  double l_leader, double vf, double v, 
+								  double x, 
+								  double x_leader, 
+								  double x_leader_steps_early,
+								  double lead_v, double min_headway,
+								  double Gap_AC_Thrd,
+								  double desire)
 {
-	throw std::logic_error("The method or operation is not implemented.");
+	if(lead_v > v)
+	{
+		if (x_leader-x-l_leader-jamGap>=0)
+		{
+			return true;
+		}	
+	}
+	double theta = tau*this->getGippsTheta();
+	double b_estimate = a_L*this->getEstimateLeaderDecCoeff();
+	return GippsGap(a_L,tau,theta,x_leader,
+		x,jamGap,l_leader,v,lead_v,b_estimate);
 }
 
 bool myVehicleDef::AccGapAccepted(double a_L, double a_U, double tau, 
@@ -2511,4 +2543,77 @@ bool myVehicleDef::AccGapAccepted(double a_L, double a_U, double tau,
 		return false; //downstream gap is not satisfied
 	}	
 	return true;
+}
+
+//////////////////////////////////////////////////////////////////////////
+/////Ciuffo, Biagio, Vincenzo Punzo, 
+//and Marcello Montanino. 
+//"Thirty Years of Gipps' Car-Following Model: 
+//Applications, Developments, and New Features." 
+//Transportation Research Record: 
+//Journal of the Transportation Research Board 
+//2315 (2012): 89-99. (Eq. 3)
+//////////////////////////////////////////////////////////////////////////
+double myVehicleDef::GippsDecelerationTerm
+	(double maxDec,double reaction_time,double theta, 
+	double x_leader,double x,double jamGap, double l_leader,
+	double v,double lead_v,double b_estimate)
+{
+	double value_in_sqrt = 
+		pow(maxDec*(reaction_time+theta),2)-
+		maxDec*(2*(x_leader-x-jamGap-l_leader)-
+		v*reaction_time-lead_v*lead_v/b_estimate);
+
+	double v_after_tau = 0;
+	if(value_in_sqrt>0)
+	{
+		v_after_tau =maxDec
+			*(reaction_time+theta)+
+			sqrt(value_in_sqrt);
+	}
+	return v_after_tau;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//gipps safety gaps
+//Gipps, Peter G. "A behavioural car-following model for 
+//computer simulation." 
+//Transportation Research Part B: Methodological 15, no. 2 (1981): 105-111.
+//Eq. and (5)
+//////////////////////////////////////////////////////////////////////////
+bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta, 
+							  double x_leader,double x,double jamGap, double l_leader,
+							  double v,double lead_v,double b_estimate)
+{
+	double leader_stop_x 
+		= x_leader-pow(lead_v,2)/2/b_estimate;
+
+	//assuming no action was taken for reaction time +theta
+	double follower_stop_x
+		= x-pow(v,2)/2/maxDec+v*(reaction_time+theta); 
+
+	if (leader_stop_x-follower_stop_x>l_leader+jamGap)
+	{
+		return true;
+	}
+	else
+		return false;
+}
+
+bool myVehicleDef::HwasooGap(double maxDec,double reaction_time,double theta, 
+							  double x_leader,double x,double jamGap, double l_leader,
+							  double v,double lead_v,double b_estimate)
+{
+	double leader_stop_x 
+		= x_leader-pow(lead_v,2)/2/b_estimate;
+
+	double follower_stop_x
+		= x-pow(v,2)/2/maxDec;
+
+	if (leader_stop_x-follower_stop_x>l_leader+jamGap)
+	{
+		return true;
+	}
+	else
+		return false;
 }
