@@ -264,6 +264,7 @@ public:
 	int debug_track_id;
 	double gipps_theta;
 	bool allow_unseqential_merging;
+	int mandatory_type;
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -275,8 +276,6 @@ public:
 	void UpdateLc();
 	bool Willing2Coop(myVehicleDef *coop_veh);
 	int ExitCfDecision();
-	void BeforeExitLcSlowDown();
-	void BeforeExitLcSync();
 	void setLaneChangeDesire(double incentive);
 	void setLaneChangeDesireForce(double incentive_left, double incentive_right);
 	void setLaneChangeDesireOption(double incentive_left, double incentive_right);
@@ -385,5 +384,10 @@ public:
 		double x_leader,double x,double jamGap, double l_leader, double v,
 		double lead_v,double b_estimate);
 	double getLaneChangeDesireThrd(){return lane_change_prob;}
+	void setMandatoryType(int type){this->mandatory_type = type;};
+	int getMandatoryType(){return this->mandatory_type;}
+	void BeforeExitorTurningLcSync();
+	void BeforeExitorTurningLcSlowDown();
+	double PosCf2EndofExitTurning();
 };
 #endif

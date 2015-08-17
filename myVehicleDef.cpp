@@ -41,8 +41,10 @@
 #define DLC_LANE_CHANGE_FEASIBLE 0
 #define DLC_DECISION_NORMAL_FOLLOW 2
 
-#define EXIT_DECISION_SLOW_DOWN 0
+#define EXIT_DECISION_SLOW_DOWN -1
 #define EXIT_DECISION_FOLLOW 1
+#define EXIT_CHANGE_FEASIBLE 0
+#define EXIT_DECISION_NORMAL_FOLLOW 2
 
 #define FeederOnRamp 23554
 #define END_SECTION 23551
@@ -102,7 +104,32 @@ void myVehicleDef::updateRegularCf()
 //In this function, lane changing conditions are tested, and the corresponding modes are set.
 int myVehicleDef::determineDrivingMode()
 {
+
 	int currentMode = getMode();
+
+	//do not do any lane changes on node
+	if(this->isCurrentLaneNode() == true)
+	{
+		if(VehID == debug_track_id)
+		{
+			VehID = VehID;
+		}
+		switch (currentMode)
+		{
+			case CF:
+				return getMode(); //decide if lane change /merge /cooperation is needed
+			case  ACF:
+				return getMode(); //decide if another lane change followers this lane change
+			case CCF:
+				return getMode(); //see if it is willing to yield or itself needs a change
+			/*case RCF:
+				return DetermineReceiveOrLc();*/ 
+			case BCF:
+				return setMode(CF);
+			default:
+				return currentMode;
+		}
+	}
 	switch (currentMode)
 	{
 		case CF:
@@ -124,7 +151,8 @@ int myVehicleDef::determineDrivingMode()
 // each update function must do three things:
 // calculate the next position, call setnewposition, and set the mode for the next step
 void myVehicleDef::RunNGSIM()
-{               
+{              
+	
 	switch(determineDrivingMode())
 	{
 		case CF:                          
@@ -1120,8 +1148,8 @@ double myVehicleDef::PosCf
 	{
 		Has_Leader=1;	
 
-		if(VehID == 104)
-			VehID=104;
+		if(VehID == debug_track_id)
+			VehID=VehID;
 
 		//if the leader has updated, then use its previous step
 		if (leader->isUpdated())
@@ -1194,6 +1222,7 @@ double myVehicleDef::PosCf
 //using a weight coefficient
 bool myVehicleDef::NeedLC()
 {
+
 	ResetDesires();
 	//discretionary 
 	NeedDlc();
@@ -1289,6 +1318,9 @@ GET_REAL_LEADER:
 		(A2SimVehicle::getRealLeader());
 	if (real_leader)
 	{
+		if (((myVehicleDef*)real_leader)
+			->getPositionReferenceVeh(this)<=0)
+			return NULL;
 		return real_leader;
 	}
 	else
@@ -1449,7 +1481,7 @@ void myVehicleDef::UpdateMergeCf()
 //    or slow down to skip the current gap
 void myVehicleDef::UpdateBeforeLaneChangeCf()
 {
-	if(VehID == 886)
+	if(VehID == debug_track_id)
 		VehID = VehID;
 	A2SimVehicle *vehUp, *vehDown;
 	getUpDown((const A2SimVehicle *&)vehUp, (const A2SimVehicle *&)vehDown, 
@@ -1457,14 +1489,36 @@ void myVehicleDef::UpdateBeforeLaneChangeCf()
 	
 	if(this->LCType == EXIT) //type 1: exit or turning
 	{
+		int decision = ExitCfDecision(); 
 		//vehicles choose to sync with the leader on the target lane or slow to skip this gap
-		if(ExitCfDecision() == EXIT_DECISION_SLOW_DOWN)
+		if(decision == EXIT_DECISION_SLOW_DOWN)
 		{
-			this->BeforeExitLcSlowDown();
+			this->BeforeExitorTurningLcSlowDown();
+		}
+		else if(decision == EXIT_DECISION_FOLLOW)
+		{
+			this->BeforeExitorTurningLcSync();
 		}
 		else
 		{
-			this->BeforeExitLcSync();
+			this->UpdateLc();
+		}
+	}
+	else if(this->LCType == TURNING) // turning use the same flow as EXIT
+	{
+		int decision = ExitCfDecision(); 
+		//vehicles choose to sync with the leader on the target lane or slow to skip this gap
+		if(decision == EXIT_DECISION_SLOW_DOWN)
+		{
+			this->BeforeExitorTurningLcSlowDown();
+		}
+		else if(decision == EXIT_DECISION_FOLLOW)
+		{
+			this->BeforeExitorTurningLcSync();
+		}
+		else
+		{
+			this->UpdateLc();
 		}
 	}
 	//else if(this->LCType == ELC) //type 2: emergent
@@ -1556,7 +1610,9 @@ void myVehicleDef::updateCoopCf()
 		double v = 2*(nextPos - this->getPosition()) / delta_t-this->getSpeed();
 		double acc  = (v-this->getSpeed())/delta_t;
 		if( acc < this->getMAXdec()*COMF_LEVEL)
-			v = this->getSpeed()+delta_t*acc;
+		{
+			v = MAX(0,this->getSpeed()+delta_t*acc);
+		}
 		nextPos = this->getPosition()+(v+this->getSpeed())*delta_t/2;
 	}
 	setNewPosition(nextPos, 
@@ -1699,7 +1755,7 @@ void myVehicleDef::BeforeOnRampLcSlowDown()
 	}
 	else //with leader follow leader no leader
 	{
-		posFollowCurrentLeader = PosCf(this->leader,0,1,1,1);
+		posFollowCurrentLeader = PosCf(this->leader,1,beta,alpha, Relaxation);
 	}
 	double x = getPosition(0);
 	setNewPosition(MIN(posSlow,posFollowCurrentLeader),
@@ -1721,9 +1777,56 @@ void myVehicleDef::BeforeOnRampLcSync()
 	}
 	else
 	{
-		x_CF_NoSync = PosCf(this->leader,0,1,1,1);
+		x_CF_NoSync = PosCf(this->leader,1,beta,alpha, Relaxation);
 	}
 	double x=getPosition(0);	
+	setNewPosition(MIN(x_CF_NoSync,x_CF_Sync),
+		(MIN(x_CF_NoSync,x_CF_Sync) - x) / delta_t*2-this->getSpeed());
+}
+
+// define slow down behavior before a mandatory exit /turning LC.
+void myVehicleDef::BeforeExitorTurningLcSlowDown()
+{
+	//run synchronization based lane change
+	A2SimVehicle *vehUp=NULL;
+	A2SimVehicle *vehDown=NULL;	
+	getUpDown((const A2SimVehicle *&)vehUp, 
+		(const A2SimVehicle *&)vehDown, 
+		this->getTargetLane(), 0);
+	//now slow down to catch the next gap with a mild deceleration
+	double posSlow = PosCfSkipGap(vehUp);
+	//the current leader
+	double posFollowCurrentLeader = 0;	
+	double posFollowEnd = PosCf2EndofExitTurning();
+	if(this->leader != NULL) //if no leader, then pay attention to the end of the ramp
+	{
+		posFollowCurrentLeader = 
+			PosCf(this->leader,1,beta,alpha, Relaxation);
+	}
+	
+	double x = getPosition(0);
+	posFollowCurrentLeader = MIN(posFollowCurrentLeader,posFollowEnd);
+	setNewPosition(MIN(posSlow,posFollowCurrentLeader),
+		(MIN(posSlow,posFollowCurrentLeader) - x) / delta_t*2-this->getSpeed());
+}
+
+// define SYNC behavior before a mandatory exit /turning LC.
+void myVehicleDef::BeforeExitorTurningLcSync()
+{
+	//run synchronization based lane change
+	A2SimVehicle *vehUp=NULL;
+	A2SimVehicle *vehDown=NULL;	
+	getUpDown((const A2SimVehicle *&)vehUp, (const A2SimVehicle *&)vehDown, 1, 0);
+	double x_CF_Sync = PosCf(vehDown, 1, beta, alpha, Relaxation);
+	//the current leader
+	double x_CF_NoSync = 0;	
+	double posFollowEnd = PosCf2EndofExitTurning();
+	if(this->leader != NULL) //if no leader, then pay attention to the end of the ramp
+	{
+		x_CF_NoSync = PosCf(this->leader,1,beta,alpha, Relaxation);
+	}
+	double x=getPosition(0);	
+	x_CF_NoSync = MIN(x_CF_NoSync,posFollowEnd);
 	setNewPosition(MIN(x_CF_NoSync,x_CF_Sync),
 		(MIN(x_CF_NoSync,x_CF_Sync) - x) / delta_t*2-this->getSpeed());
 }
@@ -1734,9 +1837,9 @@ double myVehicleDef::PosCf2EndofRamp()
 	//simplify assume that there is a car at the end of the ramp
 	return BaseCfModel(this->getMAXdec(),
 					   this->getMAXacc(),
-					   this->getReactionTime(),
+					   this->getReactionTime()*beta,
 					   this->distance2EndAccLane(), //the distance to the end of the ramp
-					   this->jam_gap,0,0,
+					   this->getJamGap()*alpha,0,0,
 					   this->getFreeFlowSpeed(),this->getSpeed(),this->getPosition(),
 					   this->posEndAccLane(),//assume there is a car at the end of the ramp with speed of zero
 					   this->posEndAccLane(), //the position of the car steps earlier
@@ -1800,6 +1903,7 @@ bool myVehicleDef::NeedRampLc()
 			this->getSpeed(),true);
 
 		this->setLaneChangeDesireForce(incentive, 0);
+		this->setMandatoryType(RAMP);
 		return true;
 	}
 	
@@ -1992,7 +2096,11 @@ bool myVehicleDef::NeedLcExit()
 	//MyPrintString("CurrentSection : (%i)", getIdCurrentSection());
 	//if (getIdCurrentSection() == 314) {result=false;}
 	
-	if(result) setnLC(n_lc);
+	if(result) 
+	{
+		setnLC(n_lc);
+		this->setMandatoryType(MANDATORY);
+	}
 
 	//if(result) MyPrintString("Current step: needs_lc_to_exit (%i)", getId());
 	//if(result && getId() == 8)	MyPrintString("Current step: needs_lc_to_exit (%i)", getId());
@@ -2003,6 +2111,9 @@ bool myVehicleDef::NeedLcExit()
 //check if lane change is needed for turning
 bool myVehicleDef::NeedLc4Turning()
 {
+	if (VehID == debug_track_id)
+		VehID = debug_track_id;
+
 	bool result = false;
 	static double a=2.0F;
 	int n_lc=0;  // number of lane changes required to have turning
@@ -2059,6 +2170,7 @@ bool myVehicleDef::NeedLc4Turning()
 	if(result) 
 	{
 		setnLC(n_lc);
+		setMandatoryType(TURNING);
 	}
 	return result;
 }
@@ -2139,19 +2251,7 @@ bool myVehicleDef::Willing2Coop(myVehicleDef *coop_veh)
 // when exiting
 int myVehicleDef::ExitCfDecision()
 {
-	return EXIT_DECISION_SLOW_DOWN;
-}
-
-// slow down get lane change when exiting
-void myVehicleDef::BeforeExitLcSlowDown()
-{
-	
-}
-
-// sync with the leader to get lane change when exiting
-void myVehicleDef::BeforeExitLcSync()
-{
-	
+	return GapAcceptDecision_Sync_First();
 }
 
 void myVehicleDef::setLaneChangeDesire(double incentive)
@@ -2208,9 +2308,9 @@ bool myVehicleDef::CombineLCDesires()
 				left_desire>right_desire?LEFT:RIGHT;
 			int type = MANDATORY;
 			if(left_desire>right_desire)
-				type = desireLC_force_left>0?MANDATORY:OPTIONAL;
+				type = desireLC_force_left>0?this->getMandatoryType():OPTIONAL;
 			else
-				type = desireLC_force_right>0?MANDATORY:OPTIONAL;
+				type = desireLC_force_right>0?this->getMandatoryType():OPTIONAL;
 
 			//desire is less than meaning it is not that urgent
 			// then the time between lc changes must be satisfied
@@ -2258,6 +2358,7 @@ void myVehicleDef::ResetDesires()
 	this->desireLC_force_right = 0.0;	
 	this->desireLC_option_left = 0.0;	
 	this->desireLC_option_right = 0.0;	
+
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2278,6 +2379,7 @@ double myVehicleDef::CalculateDesireForce(int n_lc, double d_exit,
 	double para1 = (dis2End)/this->E;
 	double para2 = (time2End)/this->T/abs(n_lc);
 
+	// for exiting the main-lane
 	if(!is_for_on_ramp)
 	{
 		//determine the urgency
@@ -2616,4 +2718,30 @@ bool myVehicleDef::HwasooGap(double maxDec,double reaction_time,double theta,
 	}
 	else
 		return false;
+}
+
+double myVehicleDef::PosCf2EndofExitTurning()
+{
+	double distance2End = 0;
+	double posEnd = 0;
+	if(this->getMandatoryType() == EXIT)
+	{
+		posEnd = this->getPositionNextExit();
+	}
+	else
+	{
+		posEnd = this->getPositionNextTurning();
+	}
+	distance2End = posEnd - this->getPosition();
+	//simplify assume that there is a car at the edge of exiting or turning
+	return BaseCfModel(this->getMAXdec(),
+		this->getMAXacc(),
+		this->getReactionTime()*beta,
+		distance2End, //the distance to the end of the ramp
+		this->getJamGap()*alpha,0,0,
+		this->getFreeFlowSpeed(),this->getSpeed(),this->getPosition(),
+		posEnd,//assume there is a car at the end of the ramp with speed of zero
+		posEnd, //the position of the car steps earlier
+		0,
+		staticinfo.headwayMin);
 }
