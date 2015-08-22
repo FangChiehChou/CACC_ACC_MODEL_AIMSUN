@@ -174,6 +174,7 @@ public:
 	void setMCFtoBCF(int value){MCFtoBCF=value;};
 	int getMCFtoBCF(){return MCFtoBCF;};
 	double PosCfSkipGap(const A2SimVehicle* leader);
+	double PosCfSkipGap(const A2SimVehicle* potential_leader, bool apply_creep_speed);
 	void cntract(double sample_t, double mag_rate, double e_rate, double a_val, double b_val, 
 				double *int_val, double *int_val_d);
 	double SIGN1(double x);
@@ -265,6 +266,9 @@ public:
 	double gipps_theta;
 	bool allow_unseqential_merging;
 	int mandatory_type;
+	double off_ramp_e;
+	double off_ramp_t;
+	double penalty_dlc_no_exitlane;
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -389,5 +393,13 @@ public:
 	void BeforeExitorTurningLcSync();
 	void BeforeExitorTurningLcSlowDown();
 	double PosCf2EndofExitTurning();
+	void setOffRampE(double val){this->off_ramp_e = val;};
+	double getOffRampE(){return this->off_ramp_e;};
+	void setOffRampT(double val){this->off_ramp_t = val;};
+	double getOffRampT(){return this->off_ramp_t;};
+	double GetAdditionalDlcDesire(int target_lane);
+	double Bound_Function(double param1);
+	double getPenaltyDLCNoExitLane(){return penalty_dlc_no_exitlane;};
+	void setPenaltyDLCNoExitLane(double val){this->penalty_dlc_no_exitlane=val;};
 };
 #endif

@@ -421,7 +421,7 @@ A2SimVehicle *mybehavioralModel::
 			res->alpha = 0.5;
 			res->beta = 0.6;
 			//steps depending on the delta t
-			res->ACF_Steps = 10;
+			res->ACF_Steps = 20;
 			res->ACF_Step = 0;
 			res->Relaxation = 1;
 		}
@@ -502,6 +502,21 @@ A2SimVehicle *mybehavioralModel::
 			AKIConvertFromAsciiString( "sequential_merging");
 		res->SetUnsequentialMerging((ANGConnGetAttributeValueInt(
 			ANGConnGetAttribute(sequential_merging_str), exp_id)>0?true:false));
+
+		const unsigned short *e_off_ramp_str = 
+			AKIConvertFromAsciiString("e_off_ramp");
+		res->setOffRampE((ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(e_off_ramp_str), exp_id)));
+
+		const unsigned short *t_off_ramp_str = 
+			AKIConvertFromAsciiString( "t_off_ramp");
+		res->setOffRampT((ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(t_off_ramp_str), exp_id)));
+
+		const unsigned short *penalty_dlc_no_exit_str = 
+			AKIConvertFromAsciiString( "penalty_dlc_no_exit");
+		res->setPenaltyDLCNoExitLane((ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(penalty_dlc_no_exit_str), exp_id)));
 
 		//**********************************************
 

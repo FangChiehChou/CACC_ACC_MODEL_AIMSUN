@@ -580,7 +580,8 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 			GetPositionRelativeFake(((myVehicleDef *)vehDown),tau*beta,true);
 			
 		if(headway - ((myVehicleDef *)vehDown)->getLength() 
-			- getJamGap()*alpha <=0)
+			//- getJamGap()*alpha
+			<=0)
 		{
 			Ok_downstream_gap = false;
 		}
@@ -647,10 +648,17 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 		min_headway = staticinfo.headwayMin;
 		/*if(vehUp->getIdCurrentSection() == this->getIdCurrentSection())
 		{*/
-		if(up_headway - getLength() - 
-			getJamGap()*alpha<=0)
+		if(up_headway - getLength()
+			//- getJamGap()*alpha
+			<=0)
 		{
 			Ok_upstream_gap = false;
+		}
+		else if(((myVehicleDef *)vehUp)->isFictitious()==false
+			&& ((myVehicleDef *)vehUp)->getSpeed()<=0
+			)
+		{
+			Ok_downstream_gap = true;
 		}
 		else
 		{
@@ -835,6 +843,27 @@ int myVehicleDef::gapAccepted
 	}
 
 	return 0;
+}
+
+double myVehicleDef::PosCfSkipGap(const A2SimVehicle* potential_leader, 
+								  bool apply_creep_speed)
+{
+	if(apply_creep_speed)
+	{
+		PosCfSkipGap(potential_leader);
+	}
+	else
+	{
+		if(potential_leader!=NULL)
+		{
+			double a_L = this->getMAXdec()*COMF_LEVEL;		//comfortable dec
+			double speed = MAX(0,this->getSpeed()+a_L*delta_t);
+
+			return this->getPosition() + 
+				(this->getSpeed()+speed)*delta_t/2;
+		}
+		return this->getPosition();
+	}
 }
 
 //this function returns the position of the vehicle if it slow down with a comfortable deceleration
@@ -1483,9 +1512,6 @@ void myVehicleDef::UpdateBeforeLaneChangeCf()
 {
 	if(VehID == debug_track_id)
 		VehID = VehID;
-	A2SimVehicle *vehUp, *vehDown;
-	getUpDown((const A2SimVehicle *&)vehUp, (const A2SimVehicle *&)vehDown, 
-		getTargetLane(), 0);
 	
 	if(this->LCType == EXIT) //type 1: exit or turning
 	{
@@ -1578,15 +1604,20 @@ void myVehicleDef::UpdateDuingLaneChangeCf()
 // Update the position after lane changing
 void myVehicleDef::UpdateAfterLaneChangeCf()
 {
-	double new_beta = (1-beta)/(double)ACF_Steps*(double)ACF_Step+beta;
-	double new_alpha = 	(1-alpha)/(double)ACF_Steps*(double)ACF_Step+alpha;
-	double new_relaxation = (1-Relaxation) /(double)ACF_Steps*(double)ACF_Step+Relaxation;
-	double x_CF = PosCf(this->leader, 1, new_alpha, new_beta, new_relaxation);
+	double new_beta = 
+		(1-beta)/(double)ACF_Steps*(double)ACF_Step+beta;
+	double new_alpha = 	
+		(1-alpha)/(double)ACF_Steps*(double)ACF_Step+alpha;
+	double new_relaxation = 
+		(1-Relaxation) /(double)ACF_Steps*(double)ACF_Step+Relaxation;
+	double x_CF = PosCf
+		(this->leader, 1, new_alpha, new_beta, new_relaxation);
 	ACF_Step++;	
 	setNewPosition(x_CF, 
 		2*(x_CF - this->getPosition()) / delta_t-this->getSpeed());
-	if(ACF_Step == ACF_Steps)
+	if(ACF_Step >= ACF_Steps)
 	{
+		ACF_Step = 0;
 		setMode(CF);
 	}
 }
@@ -1729,7 +1760,8 @@ int myVehicleDef::RampCfDecision()
 {
 	//if this vehicle has a direct leader than 
 	// just let it follow the leader instead of seeking gaps
-	if (this->leader->isFictitious() == false)
+	if (this->leader!=NULL
+		&& this->leader->isFictitious() == false)
 	{
 		if(this->AllowUnsequentialMerging() == false)
 			return RAMP_DECISION_NORMAL_FOLLOW;
@@ -1768,7 +1800,8 @@ void myVehicleDef::BeforeOnRampLcSync()
 	//run synchronization based lane change
 	A2SimVehicle *vehUp=NULL;
 	A2SimVehicle *vehDown=NULL;	
-	getUpDown((const A2SimVehicle *&)vehUp, (const A2SimVehicle *&)vehDown, 1, 0);
+	getUpDown((const A2SimVehicle *&)vehUp, 
+		(const A2SimVehicle *&)vehDown, this->getTargetLane(), 0);
 	double x_CF_Sync = PosCf(vehDown, 1, beta, alpha, Relaxation);
 	double x_CF_NoSync = 0;
 	if(this->leader == NULL)
@@ -1794,7 +1827,7 @@ void myVehicleDef::BeforeExitorTurningLcSlowDown()
 		(const A2SimVehicle *&)vehDown, 
 		this->getTargetLane(), 0);
 	//now slow down to catch the next gap with a mild deceleration
-	double posSlow = PosCfSkipGap(vehUp);
+	double posSlow = PosCfSkipGap(vehUp, true);
 	//the current leader
 	double posFollowCurrentLeader = 0;	
 	double posFollowEnd = PosCf2EndofExitTurning();
@@ -1816,7 +1849,8 @@ void myVehicleDef::BeforeExitorTurningLcSync()
 	//run synchronization based lane change
 	A2SimVehicle *vehUp=NULL;
 	A2SimVehicle *vehDown=NULL;	
-	getUpDown((const A2SimVehicle *&)vehUp, (const A2SimVehicle *&)vehDown, 1, 0);
+	getUpDown((const A2SimVehicle *&)vehUp, 
+		(const A2SimVehicle *&)vehDown, this->getTargetLane(), 0);
 	double x_CF_Sync = PosCf(vehDown, 1, beta, alpha, Relaxation);
 	//the current leader
 	double x_CF_NoSync = 0;	
@@ -1910,6 +1944,18 @@ bool myVehicleDef::NeedRampLc()
 	return false;
 }
 
+
+double myVehicleDef::GetAdditionalDlcDesire(int target_lane)
+{
+	double vf= getFreeFlowSpeed();
+	double d_scan = getDLCScanRange();   // scan maximum 50m ahead
+	int n_scan = getDLCScanNoCars();   // scan maximum 5 vehicles ahead
+	double v_target = isLaneChangingPossible(target_lane) ?
+		getAverageSpeedAHead(target_lane, d_scan, n_scan) : 0;
+	double v_ahead = getAverageSpeedAHead(0, d_scan, n_scan);
+	return MAX(0,(v_target - v_ahead) / vf);
+}
+
 bool myVehicleDef::NeedDlc()
 {
 	//if(getLCTime()<=20) return false;
@@ -1948,7 +1994,8 @@ bool myVehicleDef::NeedDlc()
     if ( v_left > v_right 
 		&& v_left > v_ahead
 		&& isLaneChangingPossible(1)
-		&& !IsOnramp(LEFT))
+		&& !IsOnramp(LEFT)
+		)
 	{
 		//MyPrintString("Try to left LC (%i)", getId());
 		//ind_lc = 1;
@@ -2013,19 +2060,21 @@ bool myVehicleDef::NeedDlc()
 		getIdTargetLanes4NextTurning(0, exit_lane_from, exit_lane_to);
 		int curLane = getIdCurrentLane();
 
-		//MyPrintString("Cur_Lane: (%i), From_Lane: (%i), To_Lane: (%i)", curLane, exit_lane_from, exit_lane_to);
+		double d_exit = getPositionNextTurning() - getPosition(0);
+		if (d_exit < this->getDLCForbidZoneBeforeExit())
+		{
+			goto NO_LANE_CHANGE;
+		}
 
 		if (curLane + getTargetLane() < exit_lane_from 
 			|| curLane + getTargetLane() > exit_lane_to) 
 		{
-			double d_exit = getPositionNextTurning() - getPosition(0);
-			if (d_exit < this->getDLCForbidZoneBeforeExit())
-			{
-				goto NO_LANE_CHANGE;
-			}
+			lc_prob *= this->getPenaltyDLCNoExitLane();
+			lc_prob_right *= this->getPenaltyDLCNoExitLane();
 		}
 
-		//DLC is also not allowed when the vehicle is at the original section
+		//DLC is also not allowed 
+		//when the vehicle is at the original section
 		//with the same zone distance
 		if(this->getIdCurrentSection() ==
 			this->getSourceSection()&&
@@ -2190,10 +2239,10 @@ bool myVehicleDef::NeedCoop()
 	A2SimVehicle *vehUp=NULL;
 	A2SimVehicle *vehDown=NULL;	
 	getUpDown((const A2SimVehicle *&)vehUp, 
-		(const A2SimVehicle *&)vehDown,1, 0);
+		(const A2SimVehicle *&)vehDown, LEFT, 0);
 	if(vehDown!=NULL
 		&& ((myVehicleDef*)vehDown)->getMode() == BCF
-		&& ((myVehicleDef*)vehDown)->getTargetLane() == -1)
+		&& ((myVehicleDef*)vehDown)->getTargetLane() == RIGHT)
 	{
 		if(this->Willing2Coop(((myVehicleDef*)vehDown)))
 		{
@@ -2202,10 +2251,10 @@ bool myVehicleDef::NeedCoop()
 	}
 
 	getUpDown((const A2SimVehicle *&)vehUp, 
-		(const A2SimVehicle *&)vehDown, -1, 0);
+		(const A2SimVehicle *&)vehDown, RIGHT, 0);
 	if(vehDown!=NULL
 		&& ((myVehicleDef*)vehDown)->getMode() == BCF
-		&& ((myVehicleDef*)vehDown)->getTargetLane() == 1)
+		&& ((myVehicleDef*)vehDown)->getTargetLane() == LEFT)
 	{
 		//find the leader 
 		double dis = ((myVehicleDef*)vehDown)->getPositionReferenceVeh
@@ -2300,12 +2349,41 @@ bool myVehicleDef::CombineLCDesires()
 			= desireLC_force_right+
 			this->discretionary_LC_weight*desireLC_option_right;
 
+		//prioritize the mandatory lane change
+		if(desireLC_force_left>0)
+		{
+			right_desire = 0;
+			if (desireLC_option_left == 0)
+			{
+				desireLC_option_left = 
+					GetAdditionalDlcDesire(LEFT);
+				left_desire = desireLC_force_left+
+					desireLC_option_left*discretionary_LC_weight;
+			}
+		}
+		else if(desireLC_force_right>0)
+		{
+			left_desire = 0;
+			if(desireLC_option_right == 0)
+			{
+				desireLC_option_right = 
+					GetAdditionalDlcDesire(RIGHT);
+				right_desire = desireLC_force_right+
+					desireLC_option_right*discretionary_LC_weight;
+			}
+		}
+
 		double desire = std::_cpp_max(left_desire,right_desire);
+		int target_lane = 
+			left_desire>right_desire?LEFT:RIGHT;
+
+		//if lane change is impossible return 0
+		if(this->isLaneChangingPossible(target_lane>0?LEFT:RIGHT)==false)
+			goto No_Lane_Change;
+
 		//if this desire if larger than the driver's normal desire
 		if(desire>this->getLaneChangeDesireThrd())
 		{
-			int target_lane = 
-				left_desire>right_desire?LEFT:RIGHT;
 			int type = MANDATORY;
 			if(left_desire>right_desire)
 				type = desireLC_force_left>0?this->getMandatoryType():OPTIONAL;
@@ -2369,14 +2447,11 @@ void myVehicleDef::ResetDesires()
 double myVehicleDef::CalculateDesireForce(int n_lc, double d_exit, 
 										double speed, bool is_for_on_ramp)
 {
-	//if lane change is impossible return 0
-	if(this->isLaneChangingPossible(n_lc>0?LEFT:RIGHT)==false)
-		return 0;
 
 	//determine the urgency
 	double dis2End = d_exit;
 	double time2End = d_exit/speed;
-	double para1 = (dis2End)/this->E;
+	double para1 = (dis2End)/this->E/abs(n_lc);
 	double para2 = (time2End)/this->T/abs(n_lc);
 
 	// for exiting the main-lane
@@ -2385,11 +2460,12 @@ double myVehicleDef::CalculateDesireForce(int n_lc, double d_exit,
 		//determine the urgency
 		dis2End = d_exit;
 		time2End = d_exit/speed;
-		para1 = (dis2End)/this->E;
-		para2 = (time2End)/this->T/abs(n_lc);
+		para1 = (dis2End)/this->getOffRampE()/abs(n_lc);
+		para2 = (time2End)/this->getOffRampT()/abs(n_lc);
 	}
-
-	return bound(MAX(1-para1, 1-para2), 1,0);
+	
+	return Bound_Function(MAX(1-para1, 1-para2));
+	//return bound(MAX(1-para1, 1-para2), 1,0);
 }
 
 void myVehicleDef::SetInitialVal()
@@ -2744,4 +2820,9 @@ double myVehicleDef::PosCf2EndofExitTurning()
 		posEnd, //the position of the car steps earlier
 		0,
 		staticinfo.headwayMin);
+}
+
+double myVehicleDef::Bound_Function(double param1)
+{
+	return exp(param1-0.5)/(1+exp(param1-0.5));
 }
