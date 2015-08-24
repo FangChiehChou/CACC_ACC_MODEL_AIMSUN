@@ -269,6 +269,10 @@ public:
 	double off_ramp_e;
 	double off_ramp_t;
 	double penalty_dlc_no_exitlane;
+	double b_gap_reduction_factor_offramp;
+	double b_gap_reduction_factor_onramp;
+	double f_gap_reduction_factor_onramp;
+	double f_gap_reduction_factor_offramp;
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -363,7 +367,8 @@ public:
 		double x_leader_steps_early,
 		double lead_v, double min_headway,
 		double Gap_AC_Thrd,
-		double desire);
+		double desire, 
+		bool on_ramp, bool forward);
 	bool AccGapAccepted(double a_L, 
 		double a_U, double tau, double headway, 
 		double jamGap, double d_leader, double l_leader, double vf, 
@@ -384,6 +389,7 @@ public:
 		double theta, double x_leader,double x,
 		double jamGap, double l_leader, double v,
 		double lead_v,double b_estimate);
+	bool GippsGap(double maxDec,double reaction_time,double theta, double x_leader,double x,double jamGap, double l_leader, double v,double lead_v,double b_estimate, bool on_ramp, bool forward);
 	bool HwasooGap(double maxDec,double reaction_time,double theta, 
 		double x_leader,double x,double jamGap, double l_leader, double v,
 		double lead_v,double b_estimate);
@@ -401,5 +407,21 @@ public:
 	double Bound_Function(double param1);
 	double getPenaltyDLCNoExitLane(){return penalty_dlc_no_exitlane;};
 	void setPenaltyDLCNoExitLane(double val){this->penalty_dlc_no_exitlane=val;};
+	void setForwardGapReductionOnRamp(double val)
+	{this->f_gap_reduction_factor_onramp = ((val<=0||val>1)?1:val);};
+	void setBackwardGapReductionOnRamp(double val)
+		{this->b_gap_reduction_factor_onramp = ((val<=0||val>1)?1:val);};
+	void setForwardGapReductionOffRamp(double val)
+		{this->f_gap_reduction_factor_offramp = ((val<=0||val>1)?1:val);};
+	void setBackwardGapReductionOffRamp(double val)
+		{this->b_gap_reduction_factor_offramp = ((val<=0||val>1)?1:val);};
+	double getForwardGapReductionOnRamp()
+		{return this->f_gap_reduction_factor_onramp;};
+	double getBackwardGapReductionOnRamp()
+		{return this->b_gap_reduction_factor_onramp;};
+	double getForwardGapReductionOffRamp()
+		{return this->f_gap_reduction_factor_offramp;};
+	double getBackwardGapReductionOffRamp()
+		{return this->b_gap_reduction_factor_offramp;};
 };
 #endif

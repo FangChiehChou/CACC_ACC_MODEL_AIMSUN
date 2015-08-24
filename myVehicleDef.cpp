@@ -628,7 +628,9 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 					((myVehicleDef *)vehDown)->getSpeed(), 
 					min_headway,
 					Gap_AC_Thrd,
-					desire) == false)
+					desire,
+					isCurrentLaneOnRamp(),
+					true) == false)
 				{
 					Ok_downstream_gap = false;
 				}
@@ -725,7 +727,9 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 					this->getSpeed(), 
 					min_headway,
 					Gap_AC_Thrd,
-					desire) == false)
+					desire,
+					isCurrentLaneOnRamp(),
+					false) == false)
 				{
 					Ok_downstream_gap = false;
 				}
@@ -2460,7 +2464,6 @@ void myVehicleDef::ResetDesires()
 double myVehicleDef::CalculateDesireForce(int n_lc, double d_exit, 
 										double speed, bool is_for_on_ramp)
 {
-
 	//determine the urgency
 	double dis2End = d_exit;
 	double time2End = d_exit/speed;
@@ -2682,7 +2685,9 @@ bool myVehicleDef::DisGapAccepted(double a_L, double a_U, double tau,
 								  double x_leader_steps_early,
 								  double lead_v, double min_headway,
 								  double Gap_AC_Thrd,
-								  double desire)
+								  double desire,
+								  bool on_ramp,
+								  bool forward)
 {
 	if(lead_v > v)
 	{
@@ -2694,7 +2699,7 @@ bool myVehicleDef::DisGapAccepted(double a_L, double a_U, double tau,
 	double theta = tau*this->getGippsTheta();
 	double b_estimate = a_L*this->getEstimateLeaderDecCoeff();
 	return GippsGap(a_L,tau,theta,x_leader,
-		x,jamGap,l_leader,v,lead_v,b_estimate);
+		x,jamGap,l_leader,v,lead_v,b_estimate,on_ramp,forward);
 }
 
 bool myVehicleDef::AccGapAccepted(double a_L, double a_U, double tau, 
@@ -2771,10 +2776,10 @@ double myVehicleDef::GippsDecelerationTerm
 //computer simulation." 
 //Transportation Research Part B: Methodological 15, no. 2 (1981): 105-111.
 //Eq. and (5)
-//////////////////////////////////////////////////////////////////////////
+//without reduction factors
 bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta, 
-							  double x_leader,double x,double jamGap, double l_leader,
-							  double v,double lead_v,double b_estimate)
+							double x_leader,double x,double jamGap, double l_leader,
+							double v,double lead_v,double b_estimate)
 {
 	double leader_stop_x 
 		= x_leader-pow(lead_v,2)/2/b_estimate;
@@ -2783,7 +2788,57 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 	double follower_stop_x
 		= x-pow(v,2)/2/maxDec+v*(reaction_time+theta); 
 
-	if (leader_stop_x-follower_stop_x>l_leader+jamGap)
+	double factor = 1;
+	
+	if (leader_stop_x-follower_stop_x>(l_leader+jamGap)*factor)
+	{
+		return true;
+	}
+	else
+		return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//gipps safety gaps
+//Gipps, Peter G. "A behavioural car-following model for 
+//computer simulation." 
+//Transportation Research Part B: Methodological 15, no. 2 (1981): 105-111.
+//Eq. and (5)
+//with reduction factors
+//////////////////////////////////////////////////////////////////////////
+bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta, 
+							  double x_leader,double x,double jamGap, double l_leader,
+							  double v,double lead_v,double b_estimate,
+							  bool on_ramp, bool forward)
+{
+	double leader_stop_x 
+		= x_leader-pow(lead_v,2)/2/b_estimate;
+
+	//assuming no action was taken for reaction time +theta
+	double follower_stop_x
+		= x-pow(v,2)/2/maxDec+v*(reaction_time+theta); 
+
+	double factor = 1;
+	if(on_ramp == true)
+	{
+		if(forward == true)
+		{
+			factor = f_gap_reduction_factor_onramp;
+		}
+		else
+			factor = b_gap_reduction_factor_onramp;
+	}
+	else
+	{
+		if(forward == true)
+		{
+			factor = f_gap_reduction_factor_offramp;
+		}
+		else
+			factor = b_gap_reduction_factor_offramp;
+	}
+
+	if (leader_stop_x-follower_stop_x>(l_leader+jamGap)*factor)
 	{
 		return true;
 	}
@@ -2839,3 +2894,4 @@ double myVehicleDef::Bound_Function(double param1)
 {
 	return exp(param1-0.5)/(1+exp(param1-0.5));
 }
+

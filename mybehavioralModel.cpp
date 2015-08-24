@@ -518,6 +518,26 @@ A2SimVehicle *mybehavioralModel::
 		res->setPenaltyDLCNoExitLane((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(penalty_dlc_no_exit_str), exp_id)));
 
+		//set gap reduction factors
+		//forward
+		const unsigned short *forward_gap_reduction_onramp_str = 
+			AKIConvertFromAsciiString( "forward_gap_reduction_onramp");
+		res->setForwardGapReductionOnRamp((ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(forward_gap_reduction_onramp_str), exp_id)));
+		const unsigned short *forward_gap_reduction_offramp_str = 
+			AKIConvertFromAsciiString( "forward_gap_reduction_offramp");
+		res->setForwardGapReductionOffRamp((ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(forward_gap_reduction_offramp_str), exp_id)));
+		//backward
+		const unsigned short *backward_gap_reduction_onramp_str = 
+			AKIConvertFromAsciiString( "backward_gap_reduction_onramp");
+		res->setBackwardGapReductionOnRamp((ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(backward_gap_reduction_onramp_str), exp_id)));
+		const unsigned short *backward_gap_reduction_offramp_str = 
+			AKIConvertFromAsciiString( "backward_gap_reduction_offramp");
+		res->setBackwardGapReductionOffRamp((ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(backward_gap_reduction_offramp_str), exp_id)));
+
 		//**********************************************
 
 		res->delta = 4;
