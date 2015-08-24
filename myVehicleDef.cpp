@@ -1295,6 +1295,11 @@ void myVehicleDef::setNewPosition(double pos,double velocity)
 			>this->getReactionTime()/delta_t+10)
 			this->position_queue.pop_front();
 	}
+	if(velocity<0)
+	{
+		velocity = 0;
+		pos = this->getPosition()+this->getSpeed()/2*delta_t;
+	}
 	A2SimVehicle::setNewPosition(pos,MAX(velocity,0));
 }
 
@@ -1812,9 +1817,17 @@ void myVehicleDef::BeforeOnRampLcSync()
 	{
 		x_CF_NoSync = PosCf(this->leader,1,beta,alpha, Relaxation);
 	}
-	double x=getPosition(0);	
+	double x=getPosition(0);
+
+	double sync_v = (x_CF_Sync - x) / delta_t*2-this->getSpeed();
+	if ((sync_v-this->getSpeed())/delta_t < COMF_LEVEL*this->getMAXdec())
+	{
+		sync_v = this->getSpeed()+COMF_LEVEL*this->getMAXdec()*delta_t;
+		x_CF_Sync = x+(this->getSpeed()+sync_v)/2*delta_t;
+	}
+
 	setNewPosition(MIN(x_CF_NoSync,x_CF_Sync),
-		(MIN(x_CF_NoSync,x_CF_Sync) - x) / delta_t*2-this->getSpeed());
+			(MIN(x_CF_NoSync,x_CF_Sync) - x) / delta_t*2-this->getSpeed());
 }
 
 // define slow down behavior before a mandatory exit /turning LC.
