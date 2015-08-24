@@ -658,7 +658,7 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 			&& ((myVehicleDef *)vehUp)->getSpeed()<=0
 			)
 		{
-			Ok_downstream_gap = true;
+			Ok_upstream_gap = true;
 		}
 		else
 		{
