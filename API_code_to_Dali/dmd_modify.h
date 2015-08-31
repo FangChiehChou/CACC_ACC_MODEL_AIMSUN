@@ -13,6 +13,7 @@
 #define CACCveh_Type 23057  // 813
 #define RAMP_ID 23554
 #define MAINLANE 23552
+#define ACC_LENGTH 1000.0 //ft
 
 
 int dmd_modify(double T)
@@ -181,6 +182,7 @@ void modify_section_cooperation(double coop)
 	}	
 }
 
+
 //Modify demand by OD matrix
 void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 {
@@ -189,14 +191,15 @@ void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 	int vtp_num = AKIVehGetNbVehTypes();
 
 	//from mainlane to mainlane
-	int total_through = 8000;
+	int total_through = 0;
 	//off_ramp from mainlane
 	int off_ramp = 0; //off_ramp vehicles can only be manual driven
 	//on ramp to mainlane and exit from mainlane
-	int on_ramp = 1000;//on_ramp vehicles can only be manual driven
+	int on_ramp = 0;//on_ramp vehicles can only be manual driven
 
 	//read demand
 	read_volumn(total_through,on_ramp,off_ramp);
+	//determine the result from HCM method
 
 	int car_through = (double)total_through*(1-acc_percent-cacc_percent);
 	int cacc_through =(double) total_through*cacc_percent;
@@ -220,6 +223,9 @@ void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 	int on_ramp_centroid = 0;
 	int off_ramp_centroid=0;
 	int mainlane_centroid_dest =0;
+
+	int mainlane_id = 0;
+	int on_ramp_id = 0;
 	
 	for(int i=0;i<nCentroid;i++)
 	{
@@ -237,10 +243,12 @@ void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 				//find the on-ramp for the test network
 				if (section_info.nbCentralLanes == 1)
 				{
+					on_ramp_id = section_id;
 					on_ramp_centroid = iId;
 				}
 				else
 				{
+					mainlane_id = section_id;
 					mainlane_centroid_origin = iId;
 				}
 			}
@@ -300,6 +308,7 @@ void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 			car_on==0?10:car_on);
 	}
 
+	HCM_Density(total_through,on_ramp,off_ramp,on_ramp_id,mainlane_id);
 }
 
 int dmd_modify_cacc(double ACC_percent, double CACC_percent, double ramp_demand, double mainlane)

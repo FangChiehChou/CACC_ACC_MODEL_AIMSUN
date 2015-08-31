@@ -93,9 +93,6 @@ void DisableCertainBehavior()
 /********************************************
            Open files for writing
 *********************************************/
-
-
-
 int init_data_saving(unsigned int replica, int acc_percent, int cacc_percent)
 {
 	errno_t err;
