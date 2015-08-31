@@ -219,12 +219,12 @@ bool Init()  // A major function; Called by AAPI.cxx: the top function for intia
 
 int Finish_sim_data_out()
 {
-	fflush(dbg_f);
-	fclose(dbg_f);
-	fflush(dmd_f);
-	fclose(dmd_f);	
-	fflush(sec_outfile);
-	fclose(sec_outfile);
+	/*fflush(dbg_f);
+	fclose(dbg_f);*/
+	/*fflush(dmd_f);
+	fclose(dmd_f);*/	
+	/*fflush(sec_outfile);
+	fclose(sec_outfile);*/
 
 	return 1;
 }

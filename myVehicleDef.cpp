@@ -55,6 +55,7 @@
 #define CREEP_SPEED 20
 
 #define COMF_LEVEL 0.5 //the comfortable level of deceleration
+#define ACCEPT_LEVEL 0.9 //the accepted level of deceleration for on-ramp sync
 #define DANGER_GAP 0.8
 #define MIN_REGAIN_AUTO_SPEED 5
 
@@ -1824,7 +1825,7 @@ void myVehicleDef::BeforeOnRampLcSync()
 	double x=getPosition(0);
 
 	double sync_v = (x_CF_Sync - x) / delta_t*2-this->getSpeed();
-	if ((sync_v-this->getSpeed())/delta_t < COMF_LEVEL*this->getMAXdec())
+	if ((sync_v-this->getSpeed())/delta_t < ACCEPT_LEVEL*this->getMAXdec())
 	{
 		sync_v = this->getSpeed()+COMF_LEVEL*this->getMAXdec()*delta_t;
 		x_CF_Sync = x+(this->getSpeed()+sync_v)/2*delta_t;
