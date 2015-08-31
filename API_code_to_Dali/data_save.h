@@ -4,9 +4,14 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <vector>
+#include <numeric>
+
 //#include "parameters.h"
 #define len_str 1280
 #define CONTR_SW 0
+
+#define MERGE_SECTION 332
 
 //char data_saving_dir[len_str]="a";
 
@@ -16,6 +21,7 @@ char data_saving_system[len_str]="a";
 char data_saving_prt_system[len_str]="a";  
 char data_saving_networkinfo[len_str]="a";
 char data_saving_detector_instant[len_str]="a";
+char data_saving_merge_section[len_str]="a";
 char data_saving_section_instant[len_str]="a";
 char data_saving_signal[len_str]="a";
 char data_saving_meter[len_str]="a";
@@ -26,6 +32,7 @@ char data_saving_meter[len_str]="a";
 bool READ_DETECTOR_AGGREGATED=true;
 bool READ_SECTION_AGGREGATED=false;
 bool READ_DETECTOR_INSTANT=true;
+bool READ_MERGE_SECTION=true;
 bool READ_SECTION_INSTANT=false;
 bool READ_SIGNAL=false;
 bool READ_METER=false;
@@ -42,7 +49,7 @@ int meter_state=-1;
 
 int *detIds, *sectIds, *nodeIds;
 
-FILE *dfp, *sfp,*systfp,*difp,*sifp,*sigfp,*metfp,*prtsystfp; 
+FILE *dfp, *sfp,*systfp,*difp,*sifp,*sigfp,*metfp,*prtsystfp, *merge_fp; 
 
 
 int open_detector(char* data_saving, unsigned int replic, int acc_percent, int cacc_percent);
@@ -51,6 +58,7 @@ int open_system(char* data_saving, unsigned int replic, int acc_percent, int cac
 int open_prt_system(char* data_saving, unsigned int replic, int acc_percent, int cacc_percent);
 int open_detector_instant(char* data_saving, unsigned int replic, int acc_percent, int cacc_percent);
 int open_section_instant(char* data_saving, unsigned int replic, int acc_percent, int cacc_percent);
+int open_merge_section(char* data_saving, unsigned int replic, int acc_percent, int cacc_percent);
 int open_network(char* data_saving, unsigned int replic, int acc_percent, int cacc_percent);
 int open_signal(char* data_saving, unsigned int replic, int acc_percent, int cacc_percent);
 int open_meter(char* data_saving, unsigned int replic, int acc_percent, int cacc_percent);
@@ -134,7 +142,7 @@ int init_data_saving(unsigned int replica, int acc_percent, int cacc_percent)
 		open_prt_system(data_saving_prt_system, replica, acc_percent, cacc_percent);    
 		err=fopen_s(&prtsystfp,data_saving_prt_system,"w+");	
 		if(err!=0)
-			READ_SYSTEM=false;
+			READ_SYSTEM=false; 
 	}
 	if(READ_DETECTOR_INSTANT)
 	{
@@ -144,6 +152,11 @@ int init_data_saving(unsigned int replica, int acc_percent, int cacc_percent)
 		err=fopen_s(&difp,data_saving_detector_instant,"w+");
 		if(err!=0)
 			READ_DETECTOR_INSTANT=false;
+
+		open_merge_section(data_saving_merge_section, replica, acc_percent, cacc_percent);  
+		err=fopen_s(&merge_fp,data_saving_merge_section,"w+");
+		if(err!=0)
+			READ_MERGE_SECTION=false;
 	}
 	if(READ_SECTION_INSTANT)
 	{
@@ -290,6 +303,29 @@ int open_detector_instant(char *data_saving, unsigned int replic, int acc_percen
 		{	
 			fprintf(stderr,"File detector_instant_run not open!");				
 		}	
+	return 1;
+}
+
+
+int open_merge_section(char *data_saving, unsigned int replic, 
+						int acc_percent, int cacc_percent)
+{
+	const int N_files=50;
+	errno_t err;
+	FILE* fname;
+	char str_tmp[len_str]="a";
+
+	if (use_RM == 0)
+		sprintf_s(data_saving,len_str, "C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\merge_section.txt"
+		,acc_percent, cacc_percent, replic);
+
+	err=fopen_s(&fname, data_saving,"w+");
+	if (err == 0)
+		fclose(fname);
+	else		
+	{	
+		fprintf(stderr,"File merge_section not open!");				
+	}	
 	return 1;
 }
 
@@ -456,10 +492,63 @@ int save_networkinfo(char * data_saving, unsigned int replic, int accp, int cacc
 	return 0;
 }
 
+//////////////////////////////////////////////////////////////////////////
+// save space mean speed and density of the section
+//////////////////////////////////////////////////////////////////////////
+void read_space_mean_speed_density(double absolute_time, int section_id)
+{
+	A2KSectionInf section_info = AKIInfNetGetSectionANGInf(section_id);
+	double length = section_info.length/1000.0;
+	int num_lane = section_info.nbCentralLanes;
+	if(section_info.nbSideLanes == 0)
+	{
+		return;
+	}
+	int num_veh = AKIVehStateGetNbVehiclesSection(section_id,true);
+	std::vector<double> speed_inner;
+	std::vector<double> speed_outer;
+	for(int i=0;i<num_veh;i++)
+	{
+		InfVeh veh_info = AKIVehStateGetVehicleInfSection(section_id,i);
+		if(veh_info.numberLane == 1)
+			continue;
+		if (veh_info.numberLane<=3)
+		{
+			speed_inner.push_back(veh_info.CurrentSpeed);
+		} 
+		else
+		{
+			speed_outer.push_back(veh_info.CurrentSpeed);
+		}
+	}
+
+	double avg_speed_inner =  0;
+	double avg_speed_outer =  0;
+	double density_inner = 0;
+	double density_outer = 0;
+	if(speed_inner.size() >0)
+	{
+		avg_speed_inner =  std::accumulate(speed_inner.begin(), speed_inner.end(), 0.0)
+			/speed_inner.size();
+		density_inner = speed_inner.size()/length/2.0;
+	}
+	if(speed_outer.size()>0)
+	{
+		avg_speed_outer = std::accumulate(speed_outer.begin(), speed_outer.end(), 0.0)
+			/speed_outer.size();
+		density_outer = speed_outer.size()/length/(double)(num_lane-2);
+	}
+	
+	fprintf(merge_fp,"%10.2lf\t%10.2lf\t%10.2lf\t%10.2lf\t%10.2lf\n",
+			absolute_time, avg_speed_inner,avg_speed_outer,density_inner,density_outer);
+	
+}
+
+
+
 /****************************************
    Read sensor data and save to  files
 ******************************************/
-
 int save_data(double absolute_time)
 {
 	if(READ_DETECTOR_AGGREGATED)
@@ -467,6 +556,11 @@ int save_data(double absolute_time)
 		if(fabs(absolute_time-last_det_readtime-detInterval)<1e-3)
 		{
 			read_detector(absolute_time);
+
+			//meanwhile record the space mean speed and density by averaging over all the vehicles on 
+			//inner and outer lanes
+			read_space_mean_speed_density(absolute_time, MERGE_SECTION);
+
 			last_det_readtime=absolute_time;
 		}
 	}
@@ -475,6 +569,7 @@ int save_data(double absolute_time)
 		if(fabs(absolute_time-last_sect_readtime-sectStatInterval)<1e-3)
 		{
 			read_section(absolute_time);
+
 			last_sect_readtime=absolute_time;
 		}
 	}
@@ -492,8 +587,11 @@ int save_data(double absolute_time)
 		if(fabs(absolute_time-last_det_inst_readtime-detInstantInterval)<1e-3)
 		{
 			read_detector_instant(absolute_time);
+
 			last_det_inst_readtime=absolute_time;
 		}
+		
+		
 	}
 	if(READ_SECTION_INSTANT)
 	{
@@ -523,15 +621,24 @@ int read_detector(double time)
 		int id = AKIDetGetIdDetector(i);
 		double speed = AKIDetGetSpeedAggregatedbyId(id,0);
 		if(speed >=0 && speed<200)
-		{
-			fprintf(dfp,"%.1lf,%d,%d,%.1lf,%.1lf,%.1lf\n",
+			fprintf(dfp,"%.1lf,%d,%d,%d,%.1lf,%.1lf,%.1lf\n",
 				time,
 				id,
+				AKIDetGetPropertiesDetectorById(id).IdFirstLane,
 				AKIDetGetCounterAggregatedbyId(id,0),
-				AKIDetGetSpeedAggregatedbyId(id,0),
+				speed,
 				AKIDetGetTimeOccupedAggregatedbyId(id,0),
 				AKIDetGetDensityAggregatedbyId(id,0));
-		}
+		else
+			fprintf(dfp,"%.1lf,%d,%d,%d,%.1lf,%.1lf,%.1lf\n",
+			time,
+			id,
+			AKIDetGetPropertiesDetectorById(id).IdFirstLane,
+			0,
+			0,
+			0,
+			0);
+					
 	}
 	
 	return 0;
@@ -729,10 +836,6 @@ int read_section_instant(double time)
 }
 
 
-
-
-
-
 int read_signal_state(double time)
 {
 	static float buff=0.0, buff_1=0.0;
@@ -808,6 +911,8 @@ int finish_data_saving()
 	{
 		fflush(difp);
 		fclose(difp);
+		fflush(merge_fp);
+		fclose(merge_fp);
 	}
 	if(READ_SECTION_INSTANT)
 	{

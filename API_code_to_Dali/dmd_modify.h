@@ -307,8 +307,6 @@ void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 			mainlane_centroid_dest,Car_pos,j,
 			car_on==0?10:car_on);
 	}
-
-	HCM_Density(total_through,on_ramp,off_ramp,on_ramp_id,mainlane_id);
 }
 
 int dmd_modify_cacc(double ACC_percent, double CACC_percent, double ramp_demand, double mainlane)

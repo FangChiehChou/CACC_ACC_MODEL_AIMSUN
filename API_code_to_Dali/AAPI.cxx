@@ -78,10 +78,10 @@ int AAPIPostManage(double time, double timeSta, double timTrans, double acicle)
 int AAPIFinish()
 {
 	
-	/*Finish();
+	Finish();
 	finish_data_saving();
 	Finish_sim_data_out();
-	AKIPrintString("\tFinish");*/
+	/*AKIPrintString("\tFinish");*/
 	
 	return 0;
 }

@@ -537,6 +537,11 @@ A2SimVehicle *mybehavioralModel::
 			AKIConvertFromAsciiString( "backward_gap_reduction_offramp");
 		res->setBackwardGapReductionOffRamp((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(backward_gap_reduction_offramp_str), exp_id)));
+		//
+		const unsigned short *increase_DLC_close_ramp_str = 
+			AKIConvertFromAsciiString( "increase_DLC_close_ramp");
+		res->setIncreaseDLCCloseRamp((ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(increase_DLC_close_ramp_str), exp_id)));
 
 		//**********************************************
 

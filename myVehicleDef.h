@@ -273,6 +273,7 @@ public:
 	double b_gap_reduction_factor_onramp;
 	double f_gap_reduction_factor_onramp;
 	double f_gap_reduction_factor_offramp;
+	double increase_DLC_close_ramp;
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -423,5 +424,11 @@ public:
 		{return this->f_gap_reduction_factor_offramp;};
 	double getBackwardGapReductionOffRamp()
 		{return this->b_gap_reduction_factor_offramp;};
+	double OnRampAddCoef(double ahead_speed);
+	double getIncreaseDLCCloseRamp();
+	void setIncreaseDLCCloseRamp(double val);
+	int GetRampType(int sec_id);
+	int GetOnRampFlow(int next_sec);
+	int GetOnAccLaneFlow(int next_sec, double* acc_lane_speed);
 };
 #endif
