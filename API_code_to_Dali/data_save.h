@@ -498,11 +498,7 @@ int save_networkinfo(char * data_saving, unsigned int replic, int accp, int cacc
 void read_space_mean_speed_density(double absolute_time, int section_id)
 {
 	A2KSectionInf section_info = AKIInfNetGetSectionANGInf(section_id);
-<<<<<<< HEAD
 	double length = section_info.length/1000.0;
-=======
-	double length = section_info.length/5280.0;
->>>>>>> origin/master
 	int num_lane = section_info.nbCentralLanes;
 	if(section_info.nbSideLanes == 0)
 	{

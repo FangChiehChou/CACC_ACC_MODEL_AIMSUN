@@ -424,11 +424,11 @@ public:
 		{return this->f_gap_reduction_factor_offramp;};
 	double getBackwardGapReductionOffRamp()
 		{return this->b_gap_reduction_factor_offramp;};
-	double OnRampAddCoef(double ahead_speed);
+	double OnRampAddCoef(double ahead_speed, int num_lane_2_rightmost);
 	double getIncreaseDLCCloseRamp();
 	void setIncreaseDLCCloseRamp(double val);
 	int GetRampType(int sec_id);
-	int GetOnRampFlow(int next_sec);
-	int GetOnAccLaneFlow(int next_sec, double* acc_lane_speed);
+	int GetOnRampFlow(int next_sec, double *ramp_length);
+	int GetOnAccLaneFlow(int next_sec);
 };
 #endif

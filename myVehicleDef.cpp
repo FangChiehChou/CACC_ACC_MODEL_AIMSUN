@@ -68,6 +68,8 @@
 #define OFF_RAMP 2
 #define NO_RAMP 0
 
+#define ACC_LANE_LENGTH 250 //Length of on-ramp acceleration lane[m]
+
 double bound(double x,double x_high,double x_low)
 {
 	double b;
@@ -2014,10 +2016,15 @@ bool myVehicleDef::NeedDlc()
 	if(v_right<0 || v_right>vf) v_right=vf;
 	if(v_ahead<0 || v_ahead>vf) v_ahead=vf;
 
-	//if this car is at the rightmost lane
-	if(isLaneChangingPossible(-1) == false)
-		v_ahead = v_ahead/OnRampAddCoef(v_ahead);
-
+	//if this car is at the rightmost lane or the second right-most lane
+	int num_sidelanes =
+		AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).nbSideLanes;
+	int num_lane_2_rightmost = 
+		this->getIdCurrentLane()-num_sidelanes;
+	if(num_lane_2_rightmost<=2
+	   && isLaneChangingPossible(LEFT) == true)
+		v_ahead = v_ahead/OnRampAddCoef(v_ahead, num_lane_2_rightmost);
+	
 	// change lane to left lane(1)
     if ( v_left > v_right 
 		&& v_left > v_ahead
@@ -2909,7 +2916,7 @@ double myVehicleDef::Bound_Function(double param1)
 	return exp(param1-0.5)/(1+exp(param1-0.5));
 }
 
-double myVehicleDef::OnRampAddCoef(double ahead_speed)
+double myVehicleDef::OnRampAddCoef(double ahead_speed, int num_lane_2_rightmost)
 {
 	int next_sec = 
 		AKIVehInfPathGetNextSection
@@ -2919,17 +2926,22 @@ double myVehicleDef::OnRampAddCoef(double ahead_speed)
 	//the intention of DLC
 	if( GetRampType(next_sec)==1
 		&& 
-		(this->getPositionNextTurning()-this->getPosition())<=2000
-		&&
-		this->isLaneChangingPossible(RIGHT) == false)
+		this->getPositionNextTurning()-this->getPosition()<=2000
+		)
 	{
-		double acc_lane_speed = 0;
-		int num_acc_lane = 
-			GetOnAccLaneFlow(next_sec, &acc_lane_speed)
+		double ramp_length = 0;
+		int num_acc_lane_plus_on_ramp = 
+			GetOnAccLaneFlow(next_sec)
 			+
-			GetOnRampFlow(next_sec);
+			GetOnRampFlow(next_sec, &ramp_length);
+		double density
+			= (double)num_acc_lane_plus_on_ramp
+			/(ramp_length+ACC_LANE_LENGTH)*1000.0;
 		
-		return num_acc_lane*this->getIncreaseDLCCloseRamp();
+		//comparing to the jam density 
+		double jam_ratio = density/(1000.0/6.0);
+		return jam_ratio*this->getIncreaseDLCCloseRamp()/num_lane_2_rightmost
+			+1;
 		return this->getIncreaseDLCCloseRamp();
 	}
 	return 1;	
@@ -2959,7 +2971,7 @@ int myVehicleDef::GetRampType(int sec_id)
 //////////////////////////////////////////////////////////////////////////
 // return num of vehicles on ramp
 //////////////////////////////////////////////////////////////////////////
-int myVehicleDef::GetOnRampFlow(int next_sec)
+int myVehicleDef::GetOnRampFlow(int next_sec, double *ramp_length)
 {
 	int num_veh = AKIVehStateGetNbVehiclesSection(next_sec, true);
 	int num_sec = AKIInfNetNbSectionsANG();
@@ -2969,7 +2981,11 @@ int myVehicleDef::GetOnRampFlow(int next_sec)
 		if(GetRampType(id) == TRUE_ON_RAMP){
 			if(AKIInfNetGetIdSectionANGDestinationofTurning(id,0)
 				== next_sec)
+			{
+				double length = AKIInfNetGetSectionANGInf(id).length;
+				ramp_length = &length;
 				return AKIVehStateGetNbVehiclesSection(id,true);
+			}
 		}
 	}
 	return 0;
@@ -2978,7 +2994,7 @@ int myVehicleDef::GetOnRampFlow(int next_sec)
 //////////////////////////////////////////////////////////////////////////
 // return num of vehicles on the acc lane waiting to merge
 //////////////////////////////////////////////////////////////////////////
-int myVehicleDef::GetOnAccLaneFlow(int next_sec, double* avg_speed)
+int myVehicleDef::GetOnAccLaneFlow(int next_sec)
 {
 
 	int num_veh = AKIVehStateGetNbVehiclesSection(next_sec, true);
@@ -2996,12 +3012,13 @@ int myVehicleDef::GetOnAccLaneFlow(int next_sec, double* avg_speed)
 	}
 	if(count>0){
 		speed = speed/(double)count;
-		avg_speed = &speed;
+		//avg_speed = &speed;
 	}
 	else{
 		speed = this->getFreeFlowSpeed();
-		avg_speed = &speed;
+		//avg_speed = &speed;
 	}
+
 	return count;
 }
 
