@@ -69,6 +69,7 @@ v_34_simu = sum(detector_mainlane(detector_mainlane(:,3) == 3,4))...
 v_f_simu = v_12_simu+v_34_simu;
 
 [n_row,~] = size(merging_area);
+<<<<<<< HEAD
 s_r_simu = sum(merging_area(:,2))/n_row*0.621371; % from [km/h] to [mph]
 s_o_simu = sum(merging_area(:,3))/n_row*0.621371; % from [km/h] to [mph]
 d_r_simu = sum(merging_area(:,4))/n_row*1.6; % from [veh/km] to [veh/mile]
@@ -86,4 +87,15 @@ display({'Simulated inner speed', s_r_simu, 'vs HCM inner speed ', s_r_hcm});
 display({'Simulated outer speed', s_o_simu, 'vs HCM outer speed ', s_o_hcm});
 
 
+=======
+s_r_simu = sum(merging_area(:,2))/n_row;
+s_o_simu = sum(merging_area(:,3))/n_row;
+d_r_simu = sum(merging_area(:,4))/n_row;
+d_outer_simu = sum(merging_area(:,5))/n_row;
+v_12_prop_simu = v_12_simu/(v_f_simu); % get lane distribution
+
+[d_r_hcm, s_r_hcm, s_o_hcm, s_hcm,v_12_prop_hcm] ...
+    = Merging(l_a,n_lane,v_r,v_f_simu,s_ff, s_fr);
+
+>>>>>>> origin/master
 
