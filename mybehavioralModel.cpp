@@ -156,7 +156,7 @@ void mybehavioralModel::updateVehicle( A2SimVehicle *avehicle )
 	AKIVehSetAsNoTracked(veh_Id);
 	if (this->IsPrintCF == true)
 	{
-		PrintCACCFollowMsg(vehicle, (myVehicleDef *)(vehicle->getLeader()), veh_info.headwayMin, 
+		PrintCACCFollowMsg(vehicle, (myVehicleDef *)(vehicle->getLeader()),  ((myVehicleDef *)vehicle)->getDesireHeadway(), 
 			veh_info.maxDeceleration, veh_info.maxAcceleration);
 	}
 	vehicle->UpdateVehicle(delta_t);
@@ -345,11 +345,34 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 	data.politeness_=
 		MIN(MAX(0, data.politeness_),1);
 
+	//set vehicle headway
+	const unsigned short *min_headway_String = 
+		AKIConvertFromAsciiString( "headway_min" );
+	data.min_headway_time = 
+		ANGConnGetAttributeValueDouble(
+		ANGConnGetAttribute( min_headway_String ), vehTypeId );
+	const unsigned short *max_headway_String = 
+		AKIConvertFromAsciiString( "headway_max" );
+	data.max_headway_time = 
+		ANGConnGetAttributeValueDouble(
+		ANGConnGetAttribute( max_headway_String ), vehTypeId );
+	const unsigned short *dev_headway_String = 
+		AKIConvertFromAsciiString( "headway_dev");
+	data.dev_headway_time = 
+		ANGConnGetAttributeValueDouble(
+		ANGConnGetAttribute( dev_headway_String ), vehTypeId );
+	const unsigned short *avg_headway_String = 
+		AKIConvertFromAsciiString( "headway_mean" );
+	data.avg_headway_time = 
+		ANGConnGetAttributeValueDouble(
+		ANGConnGetAttribute( avg_headway_String ), vehTypeId );
+
     vehTypeData[vehTypeId] = data;
 }
 
 // Function: arrivalNewVehicle
-// Routine for processing a new , generate a new instance and assign  characteristics
+// Routine for processing a new , 
+// generate a new instance and assign characteristics
 //
 
 A2SimVehicle *mybehavioralModel::
@@ -358,14 +381,16 @@ A2SimVehicle *mybehavioralModel::
 
     myVehicleDef  * res = new myVehicleDef(handlerVehicle, idhandler,isFictitiousVeh );
 
-    if (!isFictitiousVeh) {
+    if (!isFictitiousVeh) 
+	{
+
         std::map<int, A2BehavioralVehData>::const_iterator iter = vehTypeData.find( res->getVehType() );
         double jamGap, E, T, devT, devE, minE, minT;
 
         if( iter == vehTypeData.end() ){
             readVehTypeData( res->getVehType() );
             iter = vehTypeData.find( res->getVehType());
-        }
+        }                                 
 
         jamGap = sampleNormalDist((*iter).second.meanJam, (*iter).second.devJam);
         jamGap = std::_cpp_min((*iter).second.maxJam, std::_cpp_max(jamGap, (*iter).second.minJam));
@@ -383,6 +408,15 @@ A2SimVehicle *mybehavioralModel::
 		reaction_time = std::_cpp_min((*iter).second.max_reaction_time, 
 			std::_cpp_max(reaction_time, (*iter).second.min_reaction_time));
 		res->setReactionTime(reaction_time);
+
+		//sample headway time
+		double headway_time = sampleNormalDist(
+			(*iter).second.avg_headway_time,
+			(*iter).second.dev_headway_time
+			);
+		headway_time = std::_cpp_min((*iter).second.max_headway_time, 
+			std::_cpp_max(headway_time, (*iter).second.min_headway_time));
+		res->setHeadwayTime(headway_time);
 
 
 		res->ModelApplied = ReadModel();
@@ -553,6 +587,9 @@ A2SimVehicle *mybehavioralModel::
 			AKIConvertFromAsciiString( "debug_track_veh_id");
 		res->setDebugTrackID(ANGConnGetAttributeValueInt(
 			ANGConnGetAttribute(debug_track_id_str), exp_id));
+
+		//adjust initial speed and pos if necessary
+		res->setNewArrivalAdjust(true);
     }
 
     return res;
@@ -629,5 +666,4 @@ int mybehavioralModel::ReadGapModel(int exp_id)
 		ANGConnGetAttributeValueInt(ANGConnGetAttribute(gap_model_code), exp_id);
 
 }
-
 

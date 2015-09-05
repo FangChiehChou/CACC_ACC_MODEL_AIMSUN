@@ -36,6 +36,12 @@ public:
 	double max_reaction_time;
 	double avg_reaction_time;
 	double dev_reaction_time;
+	//headway
+	double min_headway_time;
+	double max_headway_time;
+	double avg_headway_time;
+	double dev_headway_time;
+
 	double min_time_between_lc_;
 	double politeness_;
 };

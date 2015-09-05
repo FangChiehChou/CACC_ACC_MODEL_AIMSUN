@@ -57,9 +57,13 @@ int AAPIInit()
 	return 0;
 }
 
-int AAPIManage(double time, double timeSta, double timTrans, double acicle)
+int AAPIManage(double time, 
+			   double timeSta, double timTrans, 
+			   double acicle)
 {	
-
+	dmd_generate_matrix(time, 
+		timeSta, timTrans, 
+		acicle);
 	return 0;
 }
 

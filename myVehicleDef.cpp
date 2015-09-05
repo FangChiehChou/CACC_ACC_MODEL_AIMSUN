@@ -220,6 +220,7 @@ bool myVehicleDef::ApplyNGSIMModel()
 
 void myVehicleDef::UpdateVehicle(double simu_step)
 {
+
 	delta_t = simu_step;
 	int veh_Id= getId();
 	AKIVehSetAsTracked(veh_Id);
@@ -227,8 +228,16 @@ void myVehicleDef::UpdateVehicle(double simu_step)
 	this->staticinfo = AKIVehTrackedGetStaticInf(veh_Id);
 	AKIVehSetAsNoTracked(veh_Id);
 	this->leader = this->getLeader();
-	//we hate to do this. But, we have to do it due to the fact that we cannot really recognize the vehicle in front.
-	
+
+	if(this->getNewArrivalAdjust()==true)
+	{
+		//here we need to process so that it spacing regarding the leader
+		//is at equilibrium spacing, otherwise, 
+		//we move this to negative position
+		this->AjustArrivalVehicle();
+		return;
+	}
+
 	if(this->ApplyNGSIMModel())
 	{
 		RunNGSIM();
@@ -307,7 +316,7 @@ void myVehicleDef::RunACCCACC()
 	double  e=0.0, a_des=0.0;	
 	double e_pre_step=0.0, e_pre_step_2=0.0;
 	
-	desired_time_gap=this->staticinfo.headwayMin;
+	desired_time_gap=this->getDesireHeadway();
 
 	a_U        = getMAXacc();			//a_U>0    
 	a_L        = getMAXdec();			//a_L<0
@@ -551,7 +560,7 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 	double tau = this->getReactionTime();
 	double headway=0;
 	double d_leader = 0;
-	double min_headway = staticinfo.headwayMin*beta;
+	double min_headway = this->getDesireHeadway()*beta;
 
 	//headway w.r.s to the upstream vehicle
 	double up_headway=0;
@@ -656,7 +665,7 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 		up_headway = this->getPositionReferenceVeh(((myVehicleDef *)vehUp));
 		//the lane changer has no information about the min-headway of 
 		//the follower so assume it is the same
-		min_headway = staticinfo.headwayMin;
+		min_headway = this->getDesireHeadway();
 		/*if(vehUp->getIdCurrentSection() == this->getIdCurrentSection())
 		{*/
 		if(up_headway - getLength()
@@ -781,7 +790,8 @@ int myVehicleDef::gapAccepted
 		Gap_AC_Thrd = ((myVehicleDef *)vehUp)->getMAXdec();
 		d_leader  = - (this->getSpeed() *this->getSpeed()) / (2*this->getMAXdec())*this->Relaxation;
 		headway = this->getPosition()-((myVehicleDef *)vehUp)->getPosition();	
-		double min_headway = ((myVehicleDef *)vehUp)->staticinfo.headwayMin;
+		double min_headway = 
+			((myVehicleDef *)vehUp)->getDesireHeadway();
 		if(vehUp->getIdCurrentSection() == this->getIdCurrentSection())
 		{
 			if(headway - getLength()<=0)
@@ -1097,9 +1107,17 @@ double myVehicleDef::BaseCfModel
 
 		double current_acc = (getSpeed(0)-getSpeed(1))/delta_t;
 		double acc_target = MIN(MIN(min_a, newell_a), max_a);
-		double acc = 
-			current_acc + (acc_target-current_acc)
-			/this->getAccSmoothCoef();
+		double acc = acc_target;
+		if(this->getFirstCycleAfterAdjust() == true)
+		{
+			this->setFirstCycleAfterAdjust(false);
+		}
+		else
+		{
+			acc = 
+				current_acc + (acc_target-current_acc)
+				/this->getAccSmoothCoef();
+		}
 		double vel = v+acc*delta_t;
 		x_CF = x+ (vel+v)/2*delta_t;
 
@@ -1982,6 +2000,9 @@ double myVehicleDef::GetAdditionalDlcDesire(int target_lane)
 	return MAX(0,(v_target - v_ahead) / vf);
 }
 
+//////////////////////////////////////////////////////////////////////////
+// determine if discretionary lane changing is necessary
+//////////////////////////////////////////////////////////////////////////
 bool myVehicleDef::NeedDlc()
 {
 	//if(getLCTime()<=20) return false;
@@ -2908,7 +2929,7 @@ double myVehicleDef::PosCf2EndofExitTurning()
 		posEnd,//assume there is a car at the end of the ramp with speed of zero
 		posEnd, //the position of the car steps earlier
 		0,
-		staticinfo.headwayMin);
+		this->getDesireHeadway());
 }
 
 double myVehicleDef::Bound_Function(double param1)
@@ -3021,4 +3042,92 @@ int myVehicleDef::GetOnAccLaneFlow(int next_sec)
 
 	return count;
 }
+
+//////////////////////////////////////////////////////////////////////////
+// Get vehicle equilibrium-position information given the leader info 
+//////////////////////////////////////////////////////////////////////////
+double myVehicleDef::GetEquPosition(double leader_pos, double leader_l)
+{
+	int veh_Id= getId();
+	AKIVehSetAsTracked(veh_Id);
+	this->info = AKIVehTrackedGetInf(veh_Id);
+	this->staticinfo = AKIVehTrackedGetStaticInf(veh_Id);
+	AKIVehSetAsNoTracked(veh_Id);
+
+	double v = this->getFreeFlowSpeed();
+	double desired_headway =  this->getDesireHeadway();
+	double headway = leader_l + this->getJamGap()
+		+desired_headway*v;
+	return leader_pos - headway;
+
+}
+//////////////////////////////////////////////////////////////////////////
+// In this function, we adjust the position of vehicles 
+// so that it speed is at its desired speed
+// and the spacing with the leader is at the equilibrium spacing
+void myVehicleDef::AjustArrivalVehicle()
+{
+	//find the last veh on the list of the section with the same lane
+	//and put this vehicle with a equilibrium distance with the leader
+	
+	int num_veh_sec = 
+		AKIVehStateGetNbVehiclesSection(getIdCurrentSection(), true);
+	
+	double leader_length = 0;
+	for (int i=num_veh_sec-1;i>=0;i--)
+	{
+		InfVeh info_veh
+			= AKIVehStateGetVehicleInfSection
+			(getIdCurrentSection(),i);
+		if (info_veh.idVeh == getId())
+			continue;
+		if(getIdCurrentLane() == info_veh.numberLane)
+		{
+			if(info_veh.CurrentPos < this->getPosition()
+				||
+			   (info_veh.CurrentPos == this->getPosition()&& info_veh.idVeh < this->getId())
+				)
+				continue;
+			AKIVehSetAsTracked(info_veh.idVeh);
+			StaticInfVeh vehinfo = 
+				AKIVehTrackedGetStaticInf(info_veh.idVeh);
+			leader_length = vehinfo.length;
+			//determine the equilibrium state regarding the leader
+			//that is when the acceleration equal zero and 
+			//the speed is at its desired speed
+			double eq_pos = GetEquPosition(info_veh.CurrentPos,
+				leader_length);
+			if(eq_pos<0)
+			{
+				setNewPosition(0, 
+					0);
+				this->setNewArrivalAdjust(true);
+			}
+			else
+			{
+				setNewPosition(this->getPosition(),
+					this->getFreeFlowSpeed());
+				this->setNewArrivalAdjust(false);
+				setFirstCycleAfterAdjust(true);
+			}
+			/*if(GetEquPosition(info_veh.CurrentPos,
+				leader_length)<0)
+			{
+				setNewPosition(0, 0);
+			}*/
+			return;
+		}
+	}
+	
+	//only one car there and it is itself
+	setNewPosition(this->getPosition(),
+		this->getFreeFlowSpeed());
+	setFirstCycleAfterAdjust(true);
+	this->setNewArrivalAdjust(false);
+}
+
+
+
+
+
 

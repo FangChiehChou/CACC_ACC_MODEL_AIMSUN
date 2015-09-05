@@ -4,7 +4,13 @@
 	 It will not work this way!!!
 
 ****************************************************************/
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <string.h>
+#include <vector>
+#include <numeric>
+#include <map>
 
 #define Car_Type  53  
 #define HOVveh_Type  17859
@@ -15,6 +21,13 @@
 #define MAINLANE 23552
 #define ACC_LENGTH 1000.0 //ft
 
+std::map<int,std::vector<int>> time_next; //the time for the next vehicle from an origin 
+std::map<int,double> avg_headway_origin;
+std::map<int,double> min_headway_origin;
+std::map<int,std::map<int, double>> dest; // the dest of a origin and its flow proportion
+std::map<int,int> orgin_section; // the section that connects the origin
+double global_acc = 0;
+double global_cacc = 0;
 
 int dmd_modify(double T)
 {
@@ -37,9 +50,7 @@ int dmd_modify(double T)
 		init_sw=0;
 	}
 	
-
 	current_slice=(int)floor(T/dmd_slice_len);   // 300[s] per spice
-	
 
 	for (i=0;i<NumOnRamp;i++)
 	{		
@@ -211,7 +222,6 @@ void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 	int cacc_on =(double) on_ramp*cacc_percent;
 	int acc_on =(double) on_ramp*acc_percent;
 
-
 	//double ramp_demand = 800;
 	int ACC_pos = AKIVehGetVehTypeInternalPosition (ACCveh_Type);
 	int CACC_pos = AKIVehGetVehTypeInternalPosition (CACCveh_Type);
@@ -238,6 +248,11 @@ void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 			{
 				int section_id = 
 					AKIInfNetGetIdSectionofOriginCentroidConnector(iId,j);
+				if(orgin_section.find(section_id) == orgin_section.end())
+				{
+					orgin_section.insert(std::pair<int,int>(iId,
+						section_id));
+				}
 				A2KSectionInf section_info = 
 					AKIInfNetGetSectionANGInf(section_id);
 				//find the on-ramp for the test network
@@ -286,7 +301,6 @@ void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 			mainlane_centroid_dest,CACC_pos,j,
 			cacc_through==0?10:cacc_through);
 
-
 		AKIODDemandSetDemandODPair(mainlane_centroid_origin,
 			off_ramp_centroid,Car_pos,j,
 			car_off==0?10:car_off);
@@ -306,7 +320,171 @@ void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 		AKIODDemandSetDemandODPair(on_ramp_centroid,
 			mainlane_centroid_dest,Car_pos,j,
 			car_on==0?10:car_on);
+
+		//get total demand from the mainlane origin
+		int total_mainlane = total_through
+			+ off_ramp;
+		
+		double avg_headway = 3600.0/(double)total_mainlane*4.0;
+		avg_headway_origin.insert(
+			std::pair<int,double>(mainlane_centroid_origin,avg_headway));
+		min_headway_origin.insert(
+			std::pair<int,double>(mainlane_centroid_origin,1.0));
+
+		//get total demand from the on-ramp
+		int onramp_flow = on_ramp;
+		avg_headway = 3600.0/(double)onramp_flow;
+		avg_headway_origin.insert(
+			std::pair<int,double>(on_ramp_centroid,avg_headway));
+		min_headway_origin.insert(
+			std::pair<int,double>(on_ramp_centroid,1.0));
+
+		// initialize the next time vector
+		if(time_next.find(mainlane_centroid_origin)==time_next.end())
+		{
+			std::vector<int> mainlane_vector;
+			mainlane_vector.push_back(0);
+			mainlane_vector.push_back(0);
+			mainlane_vector.push_back(0);
+			mainlane_vector.push_back(0);
+			time_next.insert
+				(std::pair<int,std::vector<int>>
+				(mainlane_centroid_origin, mainlane_vector));
+
+			std::map<int, double> destinations;
+			if(total_through+off_ramp>0)
+			{
+				destinations.insert(std::pair<int,double>
+					(mainlane_centroid_dest, total_through/(total_through+off_ramp)));
+				destinations.insert(std::pair<int,double>
+					(off_ramp_centroid, 1.0));
+			}
+			dest.insert(std::pair<int,std::map<int,double>>
+				(mainlane_centroid_origin,destinations));
+		}
+		
+		if(time_next.find(on_ramp_centroid)==time_next.end())
+		{
+			// initialize the next time vector
+			std::vector<int> on_ramp;
+			on_ramp.push_back(0);
+			time_next.insert
+				(std::pair<int,std::vector<int>>
+				(on_ramp_centroid, on_ramp));
+
+			std::map<int, double> destinations;
+			destinations.insert(std::pair<int,double>
+				(mainlane_centroid_dest, 1));
+			dest.insert(std::pair<int,std::map<int,double>>
+				(on_ramp_centroid,destinations));
+		}
 	}
+}
+
+//////////////////////////////////////////////////////////////////////////
+// generate a random exponential distributed variable
+//////////////////////////////////////////////////////////////////////////
+double RandomExpHeadway(double min_hwy, double avg_hwy)
+{
+	if(avg_hwy>0)
+	{
+		double laneflow = 3600.0/avg_hwy;
+		double lambda = laneflow / 3600.0 / (1 - min_hwy * laneflow / 3600.0);
+		//double lambda = 1/avg_hwy;
+		double theta = exp(lambda * min_hwy);
+		double x = AKIGetRandomNumber();
+		x = log((1 - x) / theta) / (-lambda);
+		return x ;
+	}
+	else
+		return 0;
+}
+
+double round(double x)
+{
+	return floor(x+0.5);
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Generate vehicle
+//////////////////////////////////////////////////////////////////////////
+int dmd_generate_matrix(double time, 
+						double timeSta, double timTrans, 
+						double acicle)
+{
+	//get simulation steps
+	int current_step =(int)(round(time/acicle));
+	//iterate of vector
+	for(int i=0;i<time_next.size();i++)
+	{
+		if(time>=AKIODDemandGetIniTimeSlice(1, i)&&
+			time<AKIODDemandGetEndTimeSlice(1, i))
+		{
+			for(int j=0;j<AKIInfNetNbCentroids();j++)
+			{
+				int origin = AKIInfNetGetCentroidId(j);
+				if(time_next.find(origin)!=time_next.end())
+				{
+					std::vector<int> times = time_next[origin];
+					for(int k=0;k<times.size();k++)
+					{
+						int next_time = times.at(k);
+						if(next_time == current_step)
+						{
+							//generate a new vehicle here
+							//first determine its destination
+							double rand_num = AKIGetRandomNumber();
+							std::map<int,double>::iterator _iterator;
+							//go over the destinations
+							for(_iterator = dest[origin].begin(); _iterator != dest[origin].end(); _iterator++)
+							{
+							//for(int n=0;n<dest[origin].size();n++)
+							//{
+								if(rand_num <= _iterator->second) //dest[origin][n][1] is the flow proportion 
+																   // of the specific origin and destination
+								{
+									//find the destination
+									int denstine = _iterator->first;
+									//determine the type
+									rand_num = AKIGetRandomNumber();
+									int veh_type = 0;
+									if(rand_num < ACC_percent)
+										veh_type = ACCveh_Type;
+									else if(rand_num < ACC_percent+
+										CACC_percent)
+										veh_type = CACCveh_Type;
+									else
+										veh_type = Car_Type;
+									//put a car on the section
+									if(AKIPutVehTrafficOD
+											(orgin_section[origin], k+1, 
+											AKIVehGetVehTypeInternalPosition(veh_type),
+											origin,denstine,0,0,false) < 0)
+									{
+										veh_type = 0;
+									}
+
+									//randomly generate the next time and replace
+									//with the value in vector
+									if(avg_headway_origin.find(origin)!=avg_headway_origin.end()
+										&&
+										avg_headway_origin[origin]>0)
+									{
+										int new_time = (int)(RandomExpHeadway(min_headway_origin[origin],
+											avg_headway_origin[origin])/acicle);
+										time_next[origin][k] = new_time+current_step;
+									}
+									
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return 0;
 }
 
 int dmd_modify_cacc(double ACC_percent, double CACC_percent, double ramp_demand, double mainlane)

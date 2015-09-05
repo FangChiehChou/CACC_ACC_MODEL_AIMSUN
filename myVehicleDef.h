@@ -274,6 +274,9 @@ public:
 	double f_gap_reduction_factor_onramp;
 	double f_gap_reduction_factor_offramp;
 	double increase_DLC_close_ramp;
+	bool new_need_adjust;
+	bool first_cycle_after_adjust;
+	double desire_headway;
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -430,5 +433,16 @@ public:
 	int GetRampType(int sec_id);
 	int GetOnRampFlow(int next_sec, double *ramp_length);
 	int GetOnAccLaneFlow(int next_sec);
+	double GetEquPosition(double leader_pos, double leader_l);
+	void setNewArrivalAdjust(bool needadjust){this->new_need_adjust = needadjust;};
+	bool getNewArrivalAdjust(){return this->new_need_adjust;};
+	void AjustArrivalVehicle();
+	void setFirstCycleAfterAdjust(bool val)
+			{first_cycle_after_adjust = val;};
+	bool getFirstCycleAfterAdjust(){return first_cycle_after_adjust;};
+	void setHeadwayTime(double headway_time)
+		{this->desire_headway = headway_time;};
+	double getDesireHeadway()
+		{return this->desire_headway>0.5?this->desire_headway:0.5;};
 };
 #endif
