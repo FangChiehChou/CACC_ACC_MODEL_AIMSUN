@@ -367,6 +367,13 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( avg_headway_String ), vehTypeId );
 
+	//cross-lane friction
+	const unsigned short *friction_String = 
+		AKIConvertFromAsciiString( "lane_friction" );
+	data.friction = 
+		ANGConnGetAttributeValueDouble(
+		ANGConnGetAttribute( friction_String ), vehTypeId );
+
     vehTypeData[vehTypeId] = data;
 }
 
@@ -472,6 +479,7 @@ A2SimVehicle *mybehavioralModel::
 
 		res->setPoliteness((*iter).second.politeness_);
 		res->setRandomPoliteness(AKIGetRandomNumber());
+		res->setFrictionCoef((*iter).second.friction);
 
 		res->setGapAcceptanceModel(ReadGapModel(exp_id));
 		//look ahead parameters of LC
@@ -576,6 +584,7 @@ A2SimVehicle *mybehavioralModel::
 			AKIConvertFromAsciiString( "increase_DLC_close_ramp");
 		res->setIncreaseDLCCloseRamp((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(increase_DLC_close_ramp_str), exp_id)));
+
 
 		//**********************************************
 

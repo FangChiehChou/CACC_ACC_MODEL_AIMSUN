@@ -1463,7 +1463,27 @@ double myVehicleDef::getFreeFlowSpeed()
 		return RAMP_SPEED;
 	else
 		return this->staticinfo.maxDesiredSpeed/3.6;*/
-	return A2SimVehicle::getFreeFlowSpeed();
+
+	double single_free =  A2SimVehicle::getFreeFlowSpeed();
+	double d_scan = getDLCScanRange();   
+	int n_scan = getDLCScanNoCars();   
+	double v_left = single_free; 
+	double v_right = single_free;
+	if(isLaneChangingPossible(LEFT) == true)
+	{
+		v_left = getAverageSpeedAHead(LEFT, d_scan, n_scan);
+	}
+	if(isLaneChangingPossible(RIGHT) == true)
+	{
+		v_right = getAverageSpeedAHead(RIGHT, d_scan, n_scan);
+	}
+	//consider friction due to the adjacent lanes
+	double v_friction = MIN(v_right, v_left);
+	if(v_friction<single_free && v_friction>0)
+	{
+		return v_friction+(single_free-v_friction)*this->getFrictionCoef();
+	}
+	return single_free;
 }
 
 int myVehicleDef::DetermineLcOrMergeOrCoop()
@@ -3139,6 +3159,16 @@ void myVehicleDef::AjustArrivalVehicle()
 		this->getFreeFlowSpeed());
 	setFirstCycleAfterAdjust(true);
 	this->setNewArrivalAdjust(false);
+}
+
+double myVehicleDef::getFrictionCoef()
+{
+	return friction_coeff;
+}
+
+void myVehicleDef::setFrictionCoef(double val)
+{
+	friction_coeff = val;
 }
 
 

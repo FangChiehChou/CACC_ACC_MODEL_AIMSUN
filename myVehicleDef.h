@@ -277,6 +277,7 @@ public:
 	bool new_need_adjust;
 	bool first_cycle_after_adjust;
 	double desire_headway;
+	double friction_coeff;
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -444,5 +445,7 @@ public:
 		{this->desire_headway = headway_time;};
 	double getDesireHeadway()
 		{return this->desire_headway>0.5?this->desire_headway:0.5;};
+	double getFrictionCoef();
+	void setFrictionCoef(double val);
 };
 #endif
