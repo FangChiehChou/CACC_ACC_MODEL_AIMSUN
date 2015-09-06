@@ -433,7 +433,7 @@ public:
 	int GetRampType(int sec_id);
 	int GetOnRampFlow(int next_sec, double *ramp_length);
 	int GetOnAccLaneFlow(int next_sec);
-	double GetEquPosition(double leader_pos, double leader_l);
+	double GetEquPosition(double leader_pos, double leader_l, double v);
 	void setNewArrivalAdjust(bool needadjust){this->new_need_adjust = needadjust;};
 	bool getNewArrivalAdjust(){return this->new_need_adjust;};
 	void AjustArrivalVehicle();

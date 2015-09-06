@@ -840,7 +840,7 @@ int myVehicleDef::gapAccepted
 			(((myVehicleDef *)vehDown)->getSpeed() *((myVehicleDef *)vehDown)->getSpeed()) / 
 			(2*((myVehicleDef *)vehDown)->getMAXdec())*this->Relaxation;
 		headway = -this->getPosition()+((myVehicleDef *)vehDown)->getPosition();
-		double min_headway = staticinfo.headwayMin*beta;
+		double min_headway = this->getDesireHeadway()*beta;
 		if(vehDown->getIdCurrentSection() == this->getIdCurrentSection())
 		{		
 			if(headway - ((myVehicleDef *)vehDown)->getLength()<=0)
@@ -1110,6 +1110,7 @@ double myVehicleDef::BaseCfModel
 		double acc = acc_target;
 		if(this->getFirstCycleAfterAdjust() == true)
 		{
+			acc = 0;
 			this->setFirstCycleAfterAdjust(false);
 		}
 		else
@@ -1250,7 +1251,7 @@ double myVehicleDef::PosCf
 			l_leader, vf, v, x, x_leader, 
 			leader_past_pos,
 			((myVehicleDef*)leader)->getSpeed(),
-			staticinfo.headwayMin*beta);
+			this->getDesireHeadway()*beta);
 		
 		/*if (leader->getIdCurrentLane() == this->getIdCurrentLane() &&
 			leader->getIdCurrentSection() == this->getIdCurrentSection())
@@ -1922,7 +1923,7 @@ double myVehicleDef::PosCf2EndofRamp()
 					   this->posEndAccLane(),//assume there is a car at the end of the ramp with speed of zero
 					   this->posEndAccLane(), //the position of the car steps earlier
 					   0,
-					   staticinfo.headwayMin);
+					   this->getDesireHeadway());
 }
 
 //get the distance to the end of the on ramp
@@ -3027,7 +3028,7 @@ int myVehicleDef::GetOnAccLaneFlow(int next_sec)
 			AKIVehStateGetVehicleInfSection(next_sec,i);
 		if(veh_info.numberLane == 1) //on the acc lane
 		{
-			speed+=veh_info.CurrentSpeed;
+			speed+=veh_info.CurrentSpeed/3.6;
 			count+=1;
 		}
 	}
@@ -3046,7 +3047,7 @@ int myVehicleDef::GetOnAccLaneFlow(int next_sec)
 //////////////////////////////////////////////////////////////////////////
 // Get vehicle equilibrium-position information given the leader info 
 //////////////////////////////////////////////////////////////////////////
-double myVehicleDef::GetEquPosition(double leader_pos, double leader_l)
+double myVehicleDef::GetEquPosition(double leader_pos, double leader_l, double v)
 {
 	int veh_Id= getId();
 	AKIVehSetAsTracked(veh_Id);
@@ -3054,7 +3055,6 @@ double myVehicleDef::GetEquPosition(double leader_pos, double leader_l)
 	this->staticinfo = AKIVehTrackedGetStaticInf(veh_Id);
 	AKIVehSetAsNoTracked(veh_Id);
 
-	double v = this->getFreeFlowSpeed();
 	double desired_headway =  this->getDesireHeadway();
 	double headway = leader_l + this->getJamGap()
 		+desired_headway*v;
@@ -3095,8 +3095,9 @@ void myVehicleDef::AjustArrivalVehicle()
 			//determine the equilibrium state regarding the leader
 			//that is when the acceleration equal zero and 
 			//the speed is at its desired speed
+			double v = MIN(info_veh.CurrentSpeed/3.6, this->getFreeFlowSpeed());// be careful, here info_veh speed is in [km/h]
 			double eq_pos = GetEquPosition(info_veh.CurrentPos,
-				leader_length);
+				leader_length, v);
 			if(eq_pos<0)
 			{
 				setNewPosition(0, 
@@ -3105,10 +3106,24 @@ void myVehicleDef::AjustArrivalVehicle()
 			}
 			else
 			{
-				setNewPosition(this->getPosition(),
-					this->getFreeFlowSpeed());
-				this->setNewArrivalAdjust(false);
-				setFirstCycleAfterAdjust(true);
+				double v_after_tau = GippsDecelerationTerm(
+					this->getMAXdec(),this->getReactionTime(),this->getGippsTheta(),info_veh.CurrentPos,
+					0,this->getJamGap(),
+					leader_length,v,info_veh.CurrentSpeed/3.6,  // be careful, here info_veh speed is in [km/h]
+					getEstimateLeaderDecCoeff()*this->getMAXdec()); 
+				if(v_after_tau < v )
+				{
+					setNewPosition(0, 
+						0);
+					this->setNewArrivalAdjust(true);
+				}
+				else
+				{					
+					setNewPosition(this->getPosition(),
+						v);
+					this->setNewArrivalAdjust(false);
+					setFirstCycleAfterAdjust(true);
+				}
 			}
 			/*if(GetEquPosition(info_veh.CurrentPos,
 				leader_length)<0)
