@@ -22,8 +22,8 @@
 #define ACC_LENGTH 1000.0 //ft
 
 std::map<int,std::vector<int>> time_next; //the time for the next vehicle from an origin 
-std::map<int,double> avg_headway_origin;
-std::map<int,double> min_headway_origin;
+std::map<int,std::vector<double>> avg_headway_origin;
+std::map<int,std::vector<double>> min_headway_origin;
 std::map<int,std::map<int, double>> dest; // the dest of a origin and its flow proportion
 std::map<int,int> orgin_section; // the section that connects the origin
 double global_acc = 0;
@@ -193,6 +193,16 @@ void modify_section_cooperation(double coop)
 	}	
 }
 
+std::vector<double> getHwyDist(int onramp_flow, double acc_length, double avg_headway)
+{
+	std::vector<double> hwys;
+	double prop = (0.2178-0.000125*onramp_flow+0.01115*acc_length/65.0);
+	hwys.push_back(avg_headway/(prop*0.4));
+	hwys.push_back(avg_headway/(prop*0.6));
+	hwys.push_back(avg_headway/((1-prop)*0.5));
+	hwys.push_back(avg_headway/((1-prop)*0.5));
+	return hwys;
+}
 
 //Modify demand by OD matrix
 void ModifyMatrixDemand(double acc_percent, double cacc_percent)
@@ -325,19 +335,24 @@ void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 		int total_mainlane = total_through
 			+ off_ramp;
 		
-		double avg_headway = 3600.0/(double)total_mainlane*4.0;
+		double avg_headway = 3600.0/(double)total_mainlane;
+		std::vector<double> hwy_dist = getHwyDist(on_ramp, ACC_LENGTH,avg_headway);
 		avg_headway_origin.insert(
-			std::pair<int,double>(mainlane_centroid_origin,avg_headway));
+			std::pair<int,std::vector<double>>(mainlane_centroid_origin,hwy_dist));
+		std::vector<double> temp_min; 
+		temp_min.push_back(1.0);temp_min.push_back(1.0);temp_min.push_back(1.0);temp_min.push_back(1.0);
 		min_headway_origin.insert(
-			std::pair<int,double>(mainlane_centroid_origin,1.0));
+			std::pair<int,std::vector<double>>(mainlane_centroid_origin,temp_min));
 
 		//get total demand from the on-ramp
 		int onramp_flow = on_ramp;
 		avg_headway = 3600.0/(double)onramp_flow;
+		std::vector<double> temp1; temp1.push_back(avg_headway);
 		avg_headway_origin.insert(
-			std::pair<int,double>(on_ramp_centroid,avg_headway));
+			std::pair<int,std::vector<double>>(on_ramp_centroid,temp1));
+		std::vector<double> temp2; temp2.push_back(1.0);
 		min_headway_origin.insert(
-			std::pair<int,double>(on_ramp_centroid,1.0));
+			std::pair<int,std::vector<double>>(on_ramp_centroid,temp2));
 
 		// initialize the next time vector
 		if(time_next.find(mainlane_centroid_origin)==time_next.end())
@@ -468,10 +483,10 @@ int dmd_generate_matrix(double time,
 									//with the value in vector
 									if(avg_headway_origin.find(origin)!=avg_headway_origin.end()
 										&&
-										avg_headway_origin[origin]>0)
+										avg_headway_origin[origin].at(k)>0)
 									{
-										int new_time = (int)(RandomExpHeadway(min_headway_origin[origin],
-											avg_headway_origin[origin])/acicle);
+										int new_time = (int)(RandomExpHeadway(min_headway_origin[origin].at(k),
+											avg_headway_origin[origin].at(k))/acicle);
 										time_next[origin][k] = new_time+current_step;
 									}
 									
