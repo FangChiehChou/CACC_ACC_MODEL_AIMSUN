@@ -1465,6 +1465,22 @@ double myVehicleDef::getFreeFlowSpeed()
 		return this->staticinfo.maxDesiredSpeed/3.6;*/
 
 	double single_free =  A2SimVehicle::getFreeFlowSpeed();
+
+	//add lane specified speed limit distribution
+	A2KSectionInf info = AKIInfNetGetSectionANGInf(this->getIdCurrentSection());
+	double section_limit = info.speedLimit/3.6; //to m/s 
+	double lane_limit = section_limit;
+	switch(this->getIdCurrentLane())
+	{
+		case 1:
+			lane_limit *= 0.9;
+		case 2:
+			lane_limit *= 0.95;
+		default:
+			lane_limit *= 1;
+	}
+	single_free = MIN(single_free, lane_limit);
+
 	double d_scan = getDLCScanRange();   
 	int n_scan = getDLCScanNoCars();   
 	double v_left = single_free; 

@@ -12,7 +12,7 @@
 clear;
 
 v_max = 40;
-tau = 1;
+tau = 0.7;
 theta = 0.3;
 b_f = -3;
 b_e = -3*1.1;
