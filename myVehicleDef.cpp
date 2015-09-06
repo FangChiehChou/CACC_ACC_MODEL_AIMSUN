@@ -64,7 +64,7 @@
 
 #define TRUE_ON_RAMP 3
 #define TRUE_OFF_RAMP 4
-#define ON_RAMP 1
+#define ON_RAMP 1 
 #define OFF_RAMP 2
 #define NO_RAMP 0
 
@@ -2959,7 +2959,9 @@ double myVehicleDef::Bound_Function(double param1)
 }
 
 double myVehicleDef::OnRampAddCoef(double ahead_speed, int num_lane_2_rightmost)
-{
+{ 	
+	if(IsSectionSource(this->getIdCurrentSection()))
+		return 1;
 	int next_sec = 
 		AKIVehInfPathGetNextSection
 		(this->VehID,this->getIdCurrentSection());
@@ -3007,7 +3009,18 @@ int myVehicleDef::GetRampType(int sec_id)
 	return ((ANGConnGetAttributeValueInt(
 		ANGConnGetAttribute(increase_DLC_close_ramp_str), sec_id)));
 
-	
+}
+
+//////////////////////////////////////////////////////////////////////////
+// find if the section is a source
+//////////////////////////////////////////////////////////////////////////
+bool myVehicleDef::IsSectionSource(int sec_id)
+{
+	const unsigned short *is_section_source_str = 
+		AKIConvertFromAsciiString( "bool_section_source");
+	return ((ANGConnGetAttributeValueBool(
+		ANGConnGetAttribute(is_section_source_str), sec_id)));
+
 }
 
 //////////////////////////////////////////////////////////////////////////

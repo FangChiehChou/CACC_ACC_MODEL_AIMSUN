@@ -1,6 +1,6 @@
 
 % define geometries
-l_a = 900; % acceleration lane length [ft]
+l_a = 820; % acceleration lane length [ft]
 n_lane = 4; % number of lanes
 n_o = n_lane-2; % number of outer lanes
 
@@ -75,7 +75,7 @@ d_r_simu = sum(merging_area(:,4))/n_row*1.6; % from [veh/km] to [veh/mile]
 d_outer_simu = sum(merging_area(:,5))/n_row*1.6; % from [veh/km] to [veh/mile]
 v_12_prop_simu = v_12_simu/(v_f_simu); % get lane distribution
 
-v_r = 500;
+v_r = 100;
 [d_r_hcm, s_r_hcm, s_o_hcm, s_hcm,v_12_prop_hcm] ...
     = Merging(l_a,n_lane,v_r,v_f_simu,s_ff, s_fr);
 

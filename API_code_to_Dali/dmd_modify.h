@@ -19,7 +19,7 @@
 #define CACCveh_Type 23057  // 813
 #define RAMP_ID 23554
 #define MAINLANE 23552
-#define ACC_LENGTH 1000.0 //ft
+#define ACC_LENGTH 820 //in feet
 
 std::map<int,std::vector<int>> time_next; //the time for the next vehicle from an origin 
 std::map<int,std::vector<double>> avg_headway_origin;
@@ -196,7 +196,7 @@ void modify_section_cooperation(double coop)
 std::vector<double> getHwyDist(int onramp_flow, double acc_length, double avg_headway)
 {
 	std::vector<double> hwys;
-	double prop = (0.2178-0.000125*onramp_flow+0.01115*acc_length/65.0);
+	double prop = (0.2178-0.000125*onramp_flow+0.01115*acc_length/50);
 	hwys.push_back(avg_headway/(prop*0.4));
 	hwys.push_back(avg_headway/(prop*0.6));
 	hwys.push_back(avg_headway/((1-prop)*0.5));

@@ -447,5 +447,6 @@ public:
 		{return this->desire_headway>0.5?this->desire_headway:0.5;};
 	double getFrictionCoef();
 	void setFrictionCoef(double val);
+	bool IsSectionSource(int sec_id);
 };
 #endif
