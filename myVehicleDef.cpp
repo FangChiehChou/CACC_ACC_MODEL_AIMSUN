@@ -104,7 +104,7 @@ void myVehicleDef::updateRegularCf()
 {	
 	double x, x_CF;
 	x=getPosition(0);
-	x_CF=PosCf(leader, 0, 1, 1, 1);
+	x_CF=PosCf(leader);
 	setNewPosition(x_CF, 2*(x_CF - x) / delta_t-this->getSpeed());
 }
 
@@ -147,8 +147,8 @@ int myVehicleDef::determineDrivingMode()
 			return Determine2ndLcAfterLc(); //decide if another lane change followers this lane change
 		case CCF:
 			return determineCoopOrLc(); //see if it is willing to yield or itself needs a change
-		/*case RCF:
-			return DetermineReceiveOrLc();*/ 
+		case RCF:
+			return DetermineReceiveOrLcOrCoop(); //see if it is needs a change or Coop or doing RCF
 		case BCF:
 			return determineGapOrGiveup();
 		default:
@@ -189,9 +189,9 @@ void myVehicleDef::RunNGSIM()
 		case CCF:
 			updateCoopCf();
 			break;
-		/*case RCF:                         
-			UpdateReceiveCf();*/
-			//break;
+		case RCF:                         
+			UpdateReceiveCf();
+			break;
 		default:
 			break;
 	}
@@ -560,7 +560,7 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 	double tau = this->getReactionTime();
 	double headway=0;
 	double d_leader = 0;
-	double min_headway = this->getDesireHeadway()*beta;
+	double min_headway = this->getDesireHeadway()*Relaxation;
 
 	//headway w.r.s to the upstream vehicle
 	double up_headway=0;
@@ -665,7 +665,7 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 		up_headway = this->getPositionReferenceVeh(((myVehicleDef *)vehUp));
 		//the lane changer has no information about the min-headway of 
 		//the follower so assume it is the same
-		min_headway = this->getDesireHeadway();
+		min_headway = this->getDesireHeadway()*Relaxation;
 		/*if(vehUp->getIdCurrentSection() == this->getIdCurrentSection())
 		{*/
 		if(up_headway - getLength()
@@ -791,7 +791,7 @@ int myVehicleDef::gapAccepted
 		d_leader  = - (this->getSpeed() *this->getSpeed()) / (2*this->getMAXdec())*this->Relaxation;
 		headway = this->getPosition()-((myVehicleDef *)vehUp)->getPosition();	
 		double min_headway = 
-			((myVehicleDef *)vehUp)->getDesireHeadway();
+			((myVehicleDef *)vehUp)->getDesireHeadway()*Relaxation;
 		if(vehUp->getIdCurrentSection() == this->getIdCurrentSection())
 		{
 			if(headway - getLength()<=0)
@@ -803,9 +803,9 @@ int myVehicleDef::gapAccepted
 				this->GetPastPos(tau*beta);
 			double new_pos = BaseCfModel(getMAXdec(), 
 				getMAXacc(), 
-				tau*beta, 
+				tau*beta, //relax of reaction time
 				headway, 
-				((myVehicleDef *)vehUp)->getJamGap()*alpha, 
+				((myVehicleDef *)vehUp)->getJamGap()*alpha, //relax of jam gap
 				d_leader, 
 				this->getLength(), 
 				((myVehicleDef *)vehUp)->getFreeFlowSpeed(), 
@@ -813,7 +813,8 @@ int myVehicleDef::gapAccepted
 				((myVehicleDef *)vehUp)->getPosition(), 
 				this->getPosition(), 
 				early_pos, 
-				this->getSpeed(), min_headway);
+				this->getSpeed(), 
+				min_headway); //relax of desired headway
 
 			double acc_up = 
 				(((new_pos - ((myVehicleDef *)vehUp)->getPosition())
@@ -840,7 +841,7 @@ int myVehicleDef::gapAccepted
 			(((myVehicleDef *)vehDown)->getSpeed() *((myVehicleDef *)vehDown)->getSpeed()) / 
 			(2*((myVehicleDef *)vehDown)->getMAXdec())*this->Relaxation;
 		headway = -this->getPosition()+((myVehicleDef *)vehDown)->getPosition();
-		double min_headway = this->getDesireHeadway()*beta;
+		double min_headway = this->getDesireHeadway()*Relaxation;
 		if(vehDown->getIdCurrentSection() == this->getIdCurrentSection())
 		{		
 			if(headway - ((myVehicleDef *)vehDown)->getLength()<=0)
@@ -1120,6 +1121,10 @@ double myVehicleDef::BaseCfModel
 				/this->getAccSmoothCoef();
 		}
 		double vel = v+acc*delta_t;
+		if(vel<0)
+		{
+			vel = 0;
+		}
 		x_CF = x+ (vel+v)/2*delta_t;
 
 		double target_v = v+acc_target*delta_t;
@@ -1246,12 +1251,21 @@ double myVehicleDef::PosCf
 		d_leader    = - (v_leader * v_leader) 
 			/ (2*a_L_leader)*(shortGap==1?relaxation:1);
 		
-		x_CF = BaseCfModel(a_L, a_U, reaction*beta, 
-			headway, jamGap*alpha, d_leader, 
+		if(shortGap == true)
+			x_CF = BaseCfModel(a_L, a_U, reaction*beta, 
+				headway, jamGap*alpha, d_leader, 
+				l_leader, vf, v, x, x_leader, 
+				leader_past_pos,
+				((myVehicleDef*)leader)->getSpeed(),
+				this->getDesireHeadway()*relaxation);
+		else
+			x_CF = BaseCfModel(a_L, a_U, reaction, 
+			headway, jamGap, d_leader, 
 			l_leader, vf, v, x, x_leader, 
 			leader_past_pos,
 			((myVehicleDef*)leader)->getSpeed(),
-			this->getDesireHeadway()*beta);
+			this->getDesireHeadway());
+
 		
 		/*if (leader->getIdCurrentLane() == this->getIdCurrentLane() &&
 			leader->getIdCurrentSection() == this->getIdCurrentSection())
@@ -1275,6 +1289,13 @@ double myVehicleDef::PosCf
 	}
 
     return x_CF;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// overload of poscf without shortgap mode
+double myVehicleDef::PosCf(const A2SimVehicle* leader)
+{
+	return PosCf(leader,0,1,1,1);
 }
 
 //this function determines if the driver decides to do a lane-changing
@@ -1351,12 +1372,12 @@ double myVehicleDef::getSpeed()
     double v = 0.0;
 	state     = isUpdated() ? 1 : 0;
 	v       = A2SimVehicle::getSpeed(state);
-    return v;
+    return MAX(v,0);
 }
 
 double myVehicleDef::getSpeed(int state)
 {
-	return A2SimVehicle::getSpeed(state);
+	return MAX(A2SimVehicle::getSpeed(state),0);
 }
 
 const A2SimVehicle* myVehicleDef::getLeader()
@@ -1468,6 +1489,9 @@ double myVehicleDef::getFreeFlowSpeed()
 
 	//add lane specified speed limit distribution
 	A2KSectionInf info = AKIInfNetGetSectionANGInf(this->getIdCurrentSection());
+	int section_type =  this->GetRampType(this->getIdCurrentSection());
+	if(info.nbCentralLanes == 1 || section_type == TRUE_ON_RAMP || section_type == TRUE_OFF_RAMP)
+		return single_free;
 	double section_limit = info.speedLimit/3.6; //to m/s 
 	double lane_limit = section_limit;
 	switch(this->getIdCurrentLane())
@@ -1701,14 +1725,11 @@ void myVehicleDef::UpdateAfterLaneChangeCf()
 void myVehicleDef::updateCoopCf()
 {
 	//follow the current leader in a normal way
-	double nextPos = this->PosCf
-		(leader,0,1,1,1);
+	double nextPos = this->PosCf(leader);
 	//CoopRequester is one of the vehicle in the 
 	if(this->CoopRequester != NULL)
 	{
-		double nextPosCoopVeh = this->PosCf
-			(CoopRequester,
-			 1,this->alpha, this->beta, this->Relaxation);
+		double nextPosCoopVeh = this->PosCf(CoopRequester);
 		nextPos = std::min(nextPos,nextPosCoopVeh);
 		//but it will apply a deceleration that is beyond the comfortable
 		double v = 2*(nextPos - this->getPosition()) / delta_t-this->getSpeed();
@@ -1725,12 +1746,24 @@ void myVehicleDef::updateCoopCf()
 }
 
 // A vehicle cuts in and this function defines how the new follower follows this new leader
-
 void myVehicleDef::UpdateReceiveCf()
 {
-	double nextPos = this->PosCf(leader,1,this->alpha, this->beta, this->Relaxation);
-	setNewPosition(nextPos, 
-		2*(nextPos - this->getPosition()) / delta_t-this->getSpeed());
+	double new_beta = 
+		(1-beta)/(double)ACF_Steps*(double)ACF_Step+beta;
+	double new_alpha = 	
+		(1-alpha)/(double)ACF_Steps*(double)ACF_Step+alpha;
+	double new_relaxation = 
+		(1-Relaxation) /(double)ACF_Steps*(double)ACF_Step+Relaxation;
+	double x_CF = PosCf
+		(this->leader, 1, new_alpha, new_beta, new_relaxation);
+	ACF_Step++;	
+	setNewPosition(x_CF, 
+		2*(x_CF - this->getPosition()) / delta_t-this->getSpeed());
+	if(ACF_Step >= ACF_Steps)
+	{
+		ACF_Step = 0;
+		setMode(CF);
+	}
 }
 
 // This is Hwasoo's original code; not fully understand the logic behind it
@@ -1863,6 +1896,8 @@ void myVehicleDef::BeforeOnRampLcSlowDown()
 		posFollowCurrentLeader = PosCf(this->leader,1,beta,alpha, Relaxation);
 	}
 	double x = getPosition(0);
+	if(posFollowCurrentLeader<x || posSlow<x)
+		posFollowCurrentLeader = posFollowCurrentLeader;
 	setNewPosition(MIN(posSlow,posFollowCurrentLeader),
 		(MIN(posSlow,posFollowCurrentLeader) - x) / delta_t*2-this->getSpeed());
 }
@@ -1893,7 +1928,6 @@ void myVehicleDef::BeforeOnRampLcSync()
 		sync_v = this->getSpeed()+COMF_LEVEL*this->getMAXdec()*delta_t;
 		x_CF_Sync = x+(this->getSpeed()+sync_v)/2*delta_t;
 	}
-
 	setNewPosition(MIN(x_CF_NoSync,x_CF_Sync),
 			(MIN(x_CF_NoSync,x_CF_Sync) - x) / delta_t*2-this->getSpeed());
 }
@@ -1954,7 +1988,8 @@ double myVehicleDef::PosCf2EndofRamp()
 					   this->getMAXacc(),
 					   this->getReactionTime()*beta,
 					   this->distance2EndAccLane(), //the distance to the end of the ramp
-					   this->getJamGap()*alpha,0,0,
+					   this->getJamGap()*alpha,
+					   0,4,
 					   this->getFreeFlowSpeed(),this->getSpeed(),this->getPosition(),
 					   this->posEndAccLane(),//assume there is a car at the end of the ramp with speed of zero
 					   this->posEndAccLane(), //the position of the car steps earlier
@@ -1998,6 +2033,9 @@ void myVehicleDef::UpdateLc()
 		this->getTargetLane(),nextPos,
 		(nextPos-getPosition())/delta_t*2-this->getSpeed());
 	this->setMode(ACF);
+
+	//Notify the follower on the target lane to run in RCF mode
+	((myVehicleDef*)vehUp)->setMode(RCF);
 }
 
 //decide if the car needs a lane change on ramp
@@ -3198,6 +3236,40 @@ double myVehicleDef::getFrictionCoef()
 void myVehicleDef::setFrictionCoef(double val)
 {
 	friction_coeff = val;
+}
+
+int myVehicleDef::DetermineReceiveOrLcOrCoop()
+{
+	//first decide if lane change is necessary
+	if (NeedLC())
+	{
+		return this->setMode(BCF);
+	}
+	/*else if (NeedMCF()!=0)
+	{
+		return this->setMode(MCF) ;
+	}*/
+	else if(NeedCoop())
+	{
+		return this->setMode(CCF);
+	}
+	else
+		return this->getMode();
+}
+
+int myVehicleDef::setMode(int avalue)
+{
+	mode = avalue;
+	if(mode == RCF)
+	{
+		//reset ACF steps
+		ACF_Step = 0;
+	}
+	else if(mode == ACF)
+	{
+		ACF_Step = 0;
+	}
+	return mode;
 }
 
 

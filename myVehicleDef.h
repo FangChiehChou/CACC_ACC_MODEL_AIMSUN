@@ -118,7 +118,7 @@ public:
 	//*********the following functions and variables are defined for Yeo's model
 	
 	int getMode(){return mode;};
-	int setMode(int avalue){mode = avalue;return mode;};
+	int setMode(int avalue);
 	myVehicleDef* CoopRequester;
 
 	double IX;				// Initial Location of vehicle
@@ -179,7 +179,8 @@ public:
 				double *int_val, double *int_val_d);
 	double SIGN1(double x);
 	double PosCf(const A2SimVehicle* leader, int shortGap, double beta, double alpha, double relaxation);
-	
+	double PosCf(const A2SimVehicle* leader);
+
 	bool NeedLC();
 	bool NeedDlc( );
 	bool NeedRampLc();
@@ -448,5 +449,6 @@ public:
 	double getFrictionCoef();
 	void setFrictionCoef(double val);
 	bool IsSectionSource(int sec_id);
+	int DetermineReceiveOrLcOrCoop();
 };
 #endif

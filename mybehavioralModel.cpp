@@ -459,12 +459,12 @@ A2SimVehicle *mybehavioralModel::
 		}
 		else
 		{
-			res->alpha = 0.5;
+			res->alpha = 0.2;
 			res->beta = 0.6;
 			//steps depending on the delta t
-			res->ACF_Steps = 20;
+			res->ACF_Steps = 50;
 			res->ACF_Step = 0;
-			res->Relaxation = 1;
+			res->Relaxation = 0.4;
 		}
 
 		E = sampleNormalDist((*iter).second.meanE, (*iter).second.devE);

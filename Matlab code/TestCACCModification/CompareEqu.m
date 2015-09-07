@@ -12,13 +12,13 @@
 clear;
 
 v_max = 40;
-tau = 0.7;
-theta = 0.3;
+tau = 0.5;
+theta = 0.2;
 b_f = -3;
 b_e = -3*1.1;
 
 % for newell
-headway = 1.5;
+headway = 1.3;
 jamgap = 1;
 len = 4;
 
