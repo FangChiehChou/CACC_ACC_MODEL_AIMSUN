@@ -2935,6 +2935,8 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 	double follower_stop_x
 		= x-pow(v,2)/2/maxDec+v*(reaction_time+theta); 
 
+	double thrd = pow(lead_v,2)/2/b_estimate-pow(v,2)/2/maxDec+v*(reaction_time+theta)+l_leader+jamGap;
+
 	double factor = 1;
 	if(on_ramp == true)
 	{
@@ -2955,10 +2957,14 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 			factor = b_gap_reduction_factor_offramp;
 	}
 
-	if (leader_stop_x-follower_stop_x>(l_leader+jamGap)*factor)
+	if ((x_leader - x)>thrd*factor)
 	{
 		return true;
 	}
+	/*if (leader_stop_x-follower_stop_x>(l_leader+jamGap)*factor)
+	{
+		return true;
+	}*/
 	else
 		return false;
 }
