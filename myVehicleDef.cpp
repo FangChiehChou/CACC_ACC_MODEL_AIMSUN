@@ -2035,7 +2035,10 @@ void myVehicleDef::UpdateLc()
 	this->setMode(ACF);
 
 	//Notify the follower on the target lane to run in RCF mode
-	((myVehicleDef*)vehUp)->setMode(RCF);
+	if(vehUp!=NULL && vehUp->isFictitious() == false)
+	{
+		((myVehicleDef*)vehUp)->setMode(RCF);
+	}
 }
 
 //decide if the car needs a lane change on ramp
