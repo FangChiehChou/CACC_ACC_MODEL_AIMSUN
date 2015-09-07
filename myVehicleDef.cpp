@@ -69,6 +69,7 @@
 #define NO_RAMP 0
 
 #define ACC_LANE_LENGTH 250 //Length of on-ramp acceleration lane[m]
+#define FORBID_RAMPCHANGE_ZONE 50 //Length of on-ramp acceleration lane[m]
 
 double bound(double x,double x_high,double x_low)
 {
@@ -3279,6 +3280,23 @@ int myVehicleDef::setMode(int avalue)
 		ACF_Step = 0;
 	}
 	return mode;
+}
+
+bool myVehicleDef::isLaneChangingPossible(int target_lane)
+{
+	//A2KSectionInf inf = AKIInfNetGetSectionANGInf(this->getIdCurrentSection());
+	if(this->GetRampType(this->getIdCurrentSection()) == ON_RAMP)
+	{
+		// on the side lane
+		if(this->getIdCurrentLane()==1)
+		{
+			if(this->getPosition() < FORBID_RAMPCHANGE_ZONE)
+			{
+				return false;
+			}
+		}
+	}
+	return A2SimVehicle::isLaneChangingPossible(target_lane);
 }
 
 

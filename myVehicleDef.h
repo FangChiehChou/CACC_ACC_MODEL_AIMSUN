@@ -450,5 +450,6 @@ public:
 	void setFrictionCoef(double val);
 	bool IsSectionSource(int sec_id);
 	int DetermineReceiveOrLcOrCoop();
+	bool isLaneChangingPossible(int target_lane);
 };
 #endif

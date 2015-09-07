@@ -20,6 +20,7 @@
 #define RAMP_ID 23554
 #define MAINLANE 23552
 #define ACC_LENGTH 820 //in feet
+#define FREE_FLOW_SPEED 30.0 //[MPH]
 
 std::map<int,std::vector<int>> time_next; //the time for the next vehicle from an origin 
 std::map<int,std::vector<double>> avg_headway_origin;
@@ -193,14 +194,60 @@ void modify_section_cooperation(double coop)
 	}	
 }
 
+//////////////////////////////////////////////////////////////////////////
+// lane capacity per hour
+//////////////////////////////////////////////////////////////////////////
+double Lane_Capacity()
+{
+	//this only serve as a rough estimation
+	const unsigned short *avg_headway_String = 
+		AKIConvertFromAsciiString( "headway_mean" );
+	double avg_headway_time = 
+		ANGConnGetAttributeValueDouble(
+		ANGConnGetAttribute( avg_headway_String ), Car_Type);
+
+	const unsigned short *meanJamString = AKIConvertFromAsciiString( 
+		"GDrivingSimPluging::GKVehicle::Jam Gap Mean" );
+	double meanJam = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( meanJamString ), Car_Type );
+
+	return FREE_FLOW_SPEED/(meanJam+4.0+FREE_FLOW_SPEED*avg_headway_time)*3600;
+}
+
 std::vector<double> getHwyDist(int onramp_flow, double acc_length, double avg_headway)
 {
 	std::vector<double> hwys;
+	double total_flow = 3600.0/avg_headway; //total flow
+	//then check if assigning proportional flow to the inside lane 
+	//will exceed capacity
+
 	double prop = (0.2178-0.000125*onramp_flow+0.01115*acc_length/50);
-	hwys.push_back(avg_headway/(prop*0.4));
-	hwys.push_back(avg_headway/(prop*0.6));
-	hwys.push_back(avg_headway/((1-prop)*0.5));
-	hwys.push_back(avg_headway/((1-prop)*0.5));
+	double flow_inside_lane = total_flow*(1-prop)*0.5;
+	
+	//exceed capacity
+	double capacity = Lane_Capacity();
+	if(flow_inside_lane>Lane_Capacity())
+	{
+		double flow_outer = (total_flow-capacity*2)*0.6;
+		if(flow_outer>capacity)
+		{
+			hwys.push_back(3600.0/capacity);
+			hwys.push_back(3600.0/capacity);
+		}
+		else
+		{
+			hwys.push_back(3600.0/flow_outer/0.6*0.5);
+			hwys.push_back(3600.0/flow_outer);			
+		}
+		hwys.push_back(3600.0/capacity);
+		hwys.push_back(3600.0/capacity);		
+	}
+	else
+	{
+		hwys.push_back(avg_headway/(prop*0.4));
+		hwys.push_back(avg_headway/(prop*0.6));
+		hwys.push_back(avg_headway/((1-prop)*0.5));
+		hwys.push_back(avg_headway/((1-prop)*0.5));
+	}
 	return hwys;
 }
 
