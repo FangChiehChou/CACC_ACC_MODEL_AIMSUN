@@ -79,9 +79,9 @@ num_flows = length(unique_ramp);
 for i=1:num_flows
     ramp = unique_ramp(1, i);
     [~, col] = find(flows(1,:)== ramp);
-    num_col = len(col);
+    num_col = length(col);
     data = zeros(num_col, 4);
-    through_vol = zeros(num_col, 4);
+    through_vol = zeros(num_col, 1);
     for j=1:num_col
         through_vol(j)=flows(2,col(1,j));
         data(j,:) = mergesectiondata(col(1,j),:);
@@ -93,13 +93,13 @@ end
 [unique_ramp,~,~] = unique(flows(2,:));
 num_flows = length(unique_ramp);
 for i=1:num_flows
-    ramp = unique_ramp(2, i);
+    ramp = unique_ramp(1, i);
     [~, col] = find(flows(2,:)== ramp);
-    num_col = len(col);
+    num_col = length(col);
     data = zeros(num_col, 4);
-    ramp_vol = zeros(num_col, 4);
+    ramp_vol = zeros(num_col, 1);
     for j=1:num_col
-        ramp_vol(j)=flows(2,col(1,j));
+        ramp_vol(j)=flows(1,col(1,j));
         data(j,:) = mergesectiondata(col(1,j),:);
     end
     plotresult(ramp, ramp_vol, data, 0);
