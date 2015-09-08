@@ -51,14 +51,14 @@ for i=1:flowindex
        = ProcessSectionData(merging_data{i});
     
     %read section data
-%     fileID_section = fopen(strcat(data_dir,'\',sectionfilenames{1,i}));
-%     section = textscan(fileID_section,...
-%         '%f %f %f %f %f',...
-%         'Delimiter',',','EmptyValue',-Inf); 
-%     section_data{i} = cell2mat(section); 
-%     fclose(fileID_section);
-%     mergesectiondata(i,:)...
-%        = ProcessSectionData(merging_data{i});
+    fileID_section = fopen(strcat(data_dir,'\',sectionfilenames{1,i}));
+    section = textscan(fileID_section,...
+        '%f %f %f %f %f',...
+        'Delimiter',',','EmptyValue',-Inf); 
+    section_data{i} = cell2mat(section); 
+    fclose(fileID_section);
+    mergesectiondata(i,:)...
+       = ProcessSectionData(section_data{i});
         
     %read detector data
 %     fileID_detector = fopen(strcat(data_dir,'\',detectorfilenames{1,i}));

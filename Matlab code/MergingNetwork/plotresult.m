@@ -1,11 +1,11 @@
 function [] = plotresult(ramp, x, y, isramp)
 
 xlab = 'Ramp volume [veh/hr]';
-suffix = strcat( 'Through traffic volume = ',ramp,' veh/hr');
+suffix = strcat( 'Through traffic volume = ',int2str(ramp),' veh/hr');
 
 if isramp == 1
     xlab = 'Through traffic volume (veh per hour)';
-    suffix = strcat( 'Ramp volume = ',ramp,' veh/hr');
+    suffix = strcat( 'Ramp volume = ',int2str(ramp),' veh/hr');
 end
     
 figure(1);

@@ -593,7 +593,7 @@ int save_data(double absolute_time)
 
 			//meanwhile record the space mean speed and density by averaging over all the vehicles on 
 			//inner and outer lanes
-			read_space_mean_speed_density(absolute_time, MERGE_SECTION);
+			//read_space_mean_speed_density(absolute_time, MERGE_SECTION);
 
 			last_det_readtime=absolute_time;
 		}
