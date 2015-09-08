@@ -78,17 +78,17 @@ def readflow(on_ramp,off_ramp,through):
             on_ramp[1]=1
             on_ramp[2]=1
         for i in xrange(3, 6):
-            off_ramp.append(int(val[i]))
-        if off_ramp[0] >= off_ramp[2]:
-            off_ramp[0]=0
-            off_ramp[1]=1
-            off_ramp[2]=1
-        for i in xrange(6, 9):
             through.append(int(val[i]))
         if through[0] >= through[2]:
             through[0]=0
             through[1]=1
             through[2]=1
+        for i in xrange(6, 9):
+            off_ramp.append(int(val[i]))
+        if off_ramp[0] >= off_ramp[2]:
+            off_ramp[0]=0
+            off_ramp[1]=1
+            off_ramp[2]=1
         print val
     except ValueError:
         return False
@@ -96,7 +96,7 @@ def readflow(on_ramp,off_ramp,through):
 
 def savetempfile(on_ramp_flow,off_ramp_flow, through_flow):
     text_file = open("C:\CACC_Simu_Data\Temp.txt", "w")
-    content = '{0},{0},{0}'.format(on_ramp_flow, off_ramp_flow, through_flow)
+    content = '{0},{1},{2}'.format(on_ramp_flow, through_flow, off_ramp_flow)
     text_file.write(content)
     text_file.close()
 

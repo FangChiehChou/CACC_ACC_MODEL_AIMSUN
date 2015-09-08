@@ -299,8 +299,8 @@ bool ResetVolumeFromFile()
 			}
 		}
 		int on_ramp = std::atoi(flows.at(0).c_str());
-		int off_ramp = std::atoi(flows.at(1).c_str());
-		int through = std::atoi(flows.at(2).c_str());
+		int through = std::atoi(flows.at(1).c_str());
+		int off_ramp = std::atoi(flows.at(2).c_str());
 
 		int exp_id = ANGConnGetExperimentId();
 		const unsigned short *MAINLANE_PercentString = 

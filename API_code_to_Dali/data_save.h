@@ -207,7 +207,7 @@ int open_detector(char *data_saving, unsigned int replic, int acc_percent, int c
 			int on_ramp = 0;
 			read_volumn(total_through,on_ramp,off_ramp);
 			sprintf_s(data_saving,len_str,"C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\detector_run_%u_%u_%u.txt"
-				,acc_percent, cacc_percent, replic, total_through,on_ramp,off_ramp);			
+				,acc_percent, cacc_percent, replic, on_ramp,total_through,off_ramp);			
 		}
 	}
 
@@ -243,7 +243,7 @@ int open_section(char *data_saving, unsigned int replic, int acc_percent, int ca
 		int on_ramp = 0;
 		read_volumn(total_through,on_ramp,off_ramp);
 		sprintf_s(data_saving,len_str,"C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\section_run_%u_%u_%u.txt"
-			,acc_percent, cacc_percent, replic, total_through,on_ramp,off_ramp);			
+			,acc_percent, cacc_percent, replic, on_ramp,total_through,off_ramp);			
 	}
 	
 	err=fopen_s(&fname, data_saving,"w+");
@@ -349,7 +349,7 @@ int open_merge_section(char *data_saving, unsigned int replic,
 			int on_ramp = 0;
 			read_volumn(total_through,on_ramp,off_ramp);
 			sprintf_s(data_saving,len_str,"C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\merge_section_%u_%u_%u.txt"
-				,acc_percent, cacc_percent, replic, total_through,on_ramp,off_ramp);			
+				,acc_percent, cacc_percent, replic, on_ramp,total_through,off_ramp);			
 		}
 	}
 
