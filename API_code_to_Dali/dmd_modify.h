@@ -251,6 +251,98 @@ std::vector<double> getHwyDist(int onramp_flow, double acc_length, double avg_he
 	return hwys;
 }
 
+//////////////////////////////////////////////////////////////////////////
+// tell is a string is a number
+//////////////////////////////////////////////////////////////////////////
+bool is_number(std::string& s)
+{
+	std::string::iterator it = s.begin();
+	while (it != s.end() && isdigit(*it)) ++it;
+	return !s.empty() && it == s.end();
+}
+
+//////////////////////////////////////////////////////////////////////////
+// read volume data and set to the experiment attribute
+//////////////////////////////////////////////////////////////////////////
+bool ResetVolumeFromFile()
+{
+	char config_file[len_str];
+	sprintf_s(config_file,len_str, "C:\\CACC_Simu_Data\\temp.txt");	
+	try
+	{
+		fopen_s(&cfg_file,config_file,"r");		
+		char mystring [100];
+		fgets (mystring, 100 , cfg_file);
+		fclose(cfg_file);
+		std::string source = std::string(mystring);
+		std::string delimiter = ",";
+		std::vector<std::string> flows;
+		for(int i=0;i<3;i++)
+		{
+			int index = source.find(delimiter);
+			if(index >= 0)
+			{
+				if(is_number(source.substr(0, index)))
+				{
+					flows.push_back(source.substr(0, index));
+					source = source.substr(index+1, source.length());
+				}
+				else
+					return false;
+			}
+			else
+			{
+				if(is_number(source))
+					flows.push_back(source);
+				else
+					return false;
+			}
+		}
+		int on_ramp = std::atoi(flows.at(0).c_str());
+		int off_ramp = std::atoi(flows.at(1).c_str());
+		int through = std::atoi(flows.at(2).c_str());
+
+		int exp_id = ANGConnGetExperimentId();
+		const unsigned short *MAINLANE_PercentString = 
+			AKIConvertFromAsciiString( 
+			"through_flow");
+		ANGConnSetAttributeValueDouble
+			( ANGConnGetAttribute( MAINLANE_PercentString ), exp_id, through );
+
+		const unsigned short *on_RAMP_PercentString = 
+			AKIConvertFromAsciiString( 
+			"on_ramp_flow");
+		ANGConnSetAttributeValueDouble
+			( ANGConnGetAttribute(on_RAMP_PercentString ), exp_id, on_ramp );
+
+		const unsigned short *off_RAMP_PercentString = 
+			AKIConvertFromAsciiString( 
+			"off_ramp_flow");
+		ANGConnSetAttributeValueDouble
+			( ANGConnGetAttribute(off_RAMP_PercentString ), exp_id, off_ramp );
+		
+	}
+	catch(int e)
+	{
+		return false;
+	}
+	return true;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// based on the experimental id tell if the simulation file should be run  
+// in batch mode
+//////////////////////////////////////////////////////////////////////////
+bool IsBatchMode()
+{
+	int expid = ANGConnGetExperimentId();
+	const unsigned short *batch_string = 
+		AKIConvertFromAsciiString( 
+		"run_batch");
+	return ANGConnGetAttributeValueBool
+		(ANGConnGetAttribute(batch_string), expid );
+}
+
 //Modify demand by OD matrix
 void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 {
@@ -266,9 +358,13 @@ void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 	int on_ramp = 0;//on_ramp vehicles can only be manual driven
 
 	//read demand
+	if(IsBatchMode())
+	{
+		ResetVolumeFromFile();
+	}
 	read_volumn(total_through,on_ramp,off_ramp);
+	
 	//determine the result from HCM method
-
 	int car_through = (double)total_through*(1-acc_percent-cacc_percent);
 	int cacc_through =(double) total_through*cacc_percent;
 	int acc_through = (double)total_through*acc_percent;

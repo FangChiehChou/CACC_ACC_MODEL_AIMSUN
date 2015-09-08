@@ -48,10 +48,11 @@ def handleArguments(fileName, expId):
         off_ramp = []
         through = []
         if readflow(on_ramp, off_ramp, through):
-            for on_ramp_flow in xrange(on_ramp[0], on_ramp[2], on_ramp[1]):
-                for off_ramp_flow in xrange(off_ramp[0], off_ramp[2], off_ramp[1]):
-                    for through_flow in xrange(through[0], through[2], through[1]):
+            for on_ramp_flow in xrange(on_ramp[0], on_ramp[2], (on_ramp[1] if on_ramp[1]>0 else 1)):
+                for off_ramp_flow in xrange(off_ramp[0], off_ramp[2], (off_ramp[1] if off_ramp[1]>0 else 1)):
+                    for through_flow in xrange(through[0], through[2],(through[1] if through[1]>0 else 1)):
                         savetempfile(on_ramp_flow, off_ramp_flow, through_flow)
+                        print "On_ramp: %d, Off_ramp: %d, and Through: %d" % (on_ramp_flow, off_ramp_flow, through_flow)
                         simulateMicro(model, result)
         else:
             print('Invalid flow file!')
@@ -72,17 +73,30 @@ def readflow(on_ramp,off_ramp,through):
             return False
         for i in xrange(3):
             on_ramp.append(int(val[i]))
+        if on_ramp[0] >= on_ramp[2]:
+            on_ramp[0]=0
+            on_ramp[1]=1
+            on_ramp[2]=1
         for i in xrange(3, 6):
             off_ramp.append(int(val[i]))
+        if off_ramp[0] >= off_ramp[2]:
+            off_ramp[0]=0
+            off_ramp[1]=1
+            off_ramp[2]=1
         for i in xrange(6, 9):
             through.append(int(val[i]))
+        if through[0] >= through[2]:
+            through[0]=0
+            through[1]=1
+            through[2]=1
+        print val
     except ValueError:
         return False
     return True
 
 def savetempfile(on_ramp_flow,off_ramp_flow, through_flow):
     text_file = open("C:\CACC_Simu_Data\Temp.txt", "w")
-    content = '{},{},{}'.format(on_ramp_flow,off_ramp_flow,through_flow)
+    content = '{0},{0},{0}'.format(on_ramp_flow, off_ramp_flow, through_flow)
     text_file.write(content)
     text_file.close()
 

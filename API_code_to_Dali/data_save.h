@@ -26,11 +26,8 @@ char data_saving_section_instant[len_str]="a";
 char data_saving_signal[len_str]="a";
 char data_saving_meter[len_str]="a";
 
-
-
-
 bool READ_DETECTOR_AGGREGATED=true;
-bool READ_SECTION_AGGREGATED=false;
+bool READ_SECTION_AGGREGATED=true;
 bool READ_DETECTOR_INSTANT=true;
 bool READ_MERGE_SECTION=true;
 bool READ_SECTION_INSTANT=false;
@@ -196,19 +193,32 @@ int open_detector(char *data_saving, unsigned int replic, int acc_percent, int c
 	errno_t err;
 	FILE* fname;
 	
-		if (use_RM == 0)
+	if (use_RM == 0)
+	{
+		if(IsBatchMode() == false)
+		{
 			sprintf_s(data_saving,len_str,"C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\detector_run.txt"
-			,acc_percent, cacc_percent, replic);
-	
-
-		err=fopen_s(&fname, data_saving,"w+");
-		if (err == 0)
-			fclose(fname);
-		else		
-		{	
-			fprintf(stderr,"File detector_run not open!");	
-			
+				,acc_percent, cacc_percent, replic);
 		}
+		else
+		{	
+			int total_through = 0;
+			int off_ramp = 0; 
+			int on_ramp = 0;
+			read_volumn(total_through,on_ramp,off_ramp);
+			sprintf_s(data_saving,len_str,"C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\detector_run_%u_%u_%u.txt"
+				,acc_percent, cacc_percent, replic, total_through,on_ramp,off_ramp);			
+		}
+	}
+
+	err=fopen_s(&fname, data_saving,"w+");
+	if (err == 0)
+		fclose(fname);
+	else		
+	{	
+		fprintf(stderr,"File detector_run not open!");	
+		
+	}
 	
 	return 1;
 }
@@ -221,18 +231,28 @@ int open_section(char *data_saving, unsigned int replic, int acc_percent, int ca
 	FILE* fname;
 	char str_tmp[len_str]="a";
 
-	
-	if (use_RM == 0)
+	if(IsBatchMode() == false)
+	{
 		sprintf_s(data_saving,len_str, "C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\section_run.txt"
 			,acc_percent, cacc_percent, replic);
+	}
+	else
+	{	
+		int total_through = 0;
+		int off_ramp = 0; 
+		int on_ramp = 0;
+		read_volumn(total_through,on_ramp,off_ramp);
+		sprintf_s(data_saving,len_str,"C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\section_run_%u_%u_%u.txt"
+			,acc_percent, cacc_percent, replic, total_through,on_ramp,off_ramp);			
+	}
 	
-		err=fopen_s(&fname, data_saving,"w+");
-		if (err == 0)
-			fclose(fname);
-		else		
-		{	
-			fprintf(stderr,"File section_run not open!");					
-		}
+	err=fopen_s(&fname, data_saving,"w+");
+	if (err == 0)
+		fclose(fname);
+	else		
+	{	
+		fprintf(stderr,"File section_run not open!");					
+	}
 	
 	return 1;
 }
@@ -316,8 +336,22 @@ int open_merge_section(char *data_saving, unsigned int replic,
 	char str_tmp[len_str]="a";
 
 	if (use_RM == 0)
-		sprintf_s(data_saving,len_str, "C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\merge_section.txt"
-		,acc_percent, cacc_percent, replic);
+	{
+		if(IsBatchMode() == false)
+		{
+			sprintf_s(data_saving,len_str,"C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\merge_section.txt"
+				,acc_percent, cacc_percent, replic);
+		}
+		else
+		{	
+			int total_through = 0;
+			int off_ramp = 0; 
+			int on_ramp = 0;
+			read_volumn(total_through,on_ramp,off_ramp);
+			sprintf_s(data_saving,len_str,"C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\merge_section_%u_%u_%u.txt"
+				,acc_percent, cacc_percent, replic, total_through,on_ramp,off_ramp);			
+		}
+	}
 
 	err=fopen_s(&fname, data_saving,"w+");
 	if (err == 0)
