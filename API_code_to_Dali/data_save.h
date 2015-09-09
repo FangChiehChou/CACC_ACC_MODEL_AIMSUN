@@ -963,5 +963,9 @@ int finish_data_saving()
 		fflush(metfp);
 		fclose(metfp);
 	}
+
+	//delete all pointers
+	
+
 	return 0;
 }

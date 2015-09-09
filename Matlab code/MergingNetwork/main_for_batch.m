@@ -8,6 +8,7 @@ clear all;
 rid = 461;%replication id
 acc=0;
 cacc=0;
+merge_section = 332;
 data_dir = strcat('C:\CACC_Simu_Data\acc',int2str(acc),...
     '_cacc',int2str(cacc),'\',int2str(rid),'\detector\');
 listing = dir(data_dir);
@@ -38,27 +39,27 @@ flows = [onramp; through; offramp];
 flowindex=flowindex-1;
 
 %% then import files
-mergesectiondata=zeros(flowindex, 4);
 for i=1:flowindex
     % read merging area data
-    fileID_merge = fopen(strcat(data_dir,'\',mergefilenames{1,i}));
-    merging_area = textscan(fileID_merge,...
-        '%f %f %f %f %f',...
-        'Delimiter',',','EmptyValue',-Inf); 
-    merging_data{i} = cell2mat(merging_area);
-    fclose(fileID_merge);
-    mergesectiondata(i,:)...
-       = ProcessSectionData(merging_data{i});
+%     fileID_merge = fopen(strcat(data_dir,'\',mergefilenames{1,i}));
+%     merging_area = textscan(fileID_merge,...
+%         '%f %f %f %f %f',...
+%         'Delimiter',',','EmptyValue',-Inf); 
+%     merging_data{i} = cell2mat(merging_area);
+%     fclose(fileID_merge);
+%     mergesectiondata(i,:)...
+%        = ProcessSectionData(merging_data{i});
     
     %read section data
     fileID_section = fopen(strcat(data_dir,'\',sectionfilenames{1,i}));
     section = textscan(fileID_section,...
-        '%f %f %f %f %f',...
+        '%f %f %f %f %f %f %f %f %f %f',...
         'Delimiter',',','EmptyValue',-Inf); 
     section_data{i} = cell2mat(section); 
     fclose(fileID_section);
     mergesectiondata(i,:)...
-       = ProcessSectionData(section_data{i});
+       = ProcessSectionData(section_data{i},merge_section);
+%     mergesectiondata(i,:) = 
         
     %read detector data
 %     fileID_detector = fopen(strcat(data_dir,'\',detectorfilenames{1,i}));
@@ -75,18 +76,19 @@ end
 %% plot figures
 % figs on_ramp flow
 [unique_ramp,~,~] = unique(flows(1,:));
+[rows, cols] = size(mergesectiondata);
 num_flows = length(unique_ramp);
 for i=1:num_flows
     ramp = unique_ramp(1, i);
     [~, col] = find(flows(1,:)== ramp);
-    num_col = length(col);
-    data = zeros(num_col, 4);
+    num_col = length(col);    
+    data = zeros(num_col, cols);
     through_vol = zeros(num_col, 1);
     for j=1:num_col
         through_vol(j)=flows(2,col(1,j));
         data(j,:) = mergesectiondata(col(1,j),:);
     end
-    plotresult(ramp, through_vol, data, 1);
+    plotresult_section(ramp, through_vol, data, 1);
 end
 
 % figs through flow
@@ -96,13 +98,13 @@ for i=1:num_flows
     ramp = unique_ramp(1, i);
     [~, col] = find(flows(2,:)== ramp);
     num_col = length(col);
-    data = zeros(num_col, 4);
+    data = zeros(num_col, cols);
     ramp_vol = zeros(num_col, 1);
     for j=1:num_col
         ramp_vol(j)=flows(1,col(1,j));
         data(j,:) = mergesectiondata(col(1,j),:);
     end
-    plotresult(ramp, ramp_vol, data, 0);
+    plotresult_section(ramp, ramp_vol, data, 0);
 end
 
 

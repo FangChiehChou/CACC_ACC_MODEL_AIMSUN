@@ -234,6 +234,5 @@ bool Finish()	//should be all the fclose()
 	delete detection_s;
 	delete detection_onramp;
 	delete detection_offramp;
-
 	return true;	
 }
