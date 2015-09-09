@@ -56,10 +56,13 @@ def handleArguments(fileName, expId):
                         if index == flow_combo_index:
                             savetempfile(on_ramp_flow, off_ramp_flow, through_flow)
                             print "On_ramp: %d, Off_ramp: %d, and Through: %d" % (on_ramp_flow, off_ramp_flow, through_flow)
+                            console.save(fileName)
                             simulateMicro(model, result)
                             writenextcomboindex(on_ramp, through, off_ramp, flow_combo_index+1)
-                            console.save(fileName)
                             console.close()
+                            return
+                        else:
+                            index+=1
         else:
             print('Invalid flow file!')
         console.save(fileName)
@@ -110,14 +113,14 @@ def savetempfile(on_ramp_flow,off_ramp_flow, through_flow):
     text_file.write(content)
     text_file.close()
 
-def writenextcomboindex(on_ramp, off_ramp, through, index):
+def writenextcomboindex(on_ramp, through,off_ramp, index):
     text_file = open("C:\CACC_Simu_Data\Batch_Volume.txt", "w")
 
     content = '{0},{1},{2},'.format(on_ramp[0], on_ramp[1], on_ramp[2])
-    content = content + '{0},{1},{2},'.format(on_ramp[0], on_ramp[1], on_ramp[2])
-    content = content + '{0},{1},{2},'.format(on_ramp[0], on_ramp[1], on_ramp[2])
+    content = content + '{0},{1},{2},'.format(through[0], through[1], through[2])
+    content = content + '{0},{1},{2},'.format(off_ramp[0], off_ramp[1], off_ramp[2])
     content = content + '{0}'.format(index)
-
+    print (content)
     text_file.write(content)
     text_file.close()
 
