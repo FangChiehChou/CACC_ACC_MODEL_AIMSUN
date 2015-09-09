@@ -88,7 +88,6 @@ mybehavioralModel::~mybehavioralModel ()
 
 void mybehavioralModel::removedVehicle( void *handlerVehicle, unsigned short idHandler, A2SimVehicle * a2simVeh )
 {
-	delete a2simVeh;
 }
 
 //void mybehavioralModel::CheckorCreateDirs(int replication, int acc, int cacc)
