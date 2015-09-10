@@ -89,7 +89,8 @@ namespace BatchRun
                     info.WorkingDirectory = path;
                     //info.CreateNoWindow = true;
                     //info.UseShellExecute = false;
-                    Process.Start(info);
+                    Process p = Process.Start(info);
+                    p.WaitForExit();
                 }
             }
             else { return; }
