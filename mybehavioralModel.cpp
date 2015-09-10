@@ -29,6 +29,8 @@ FILE *StatFile;													    // summary output file pointer
 FILE *CF_Data;														//add by DW to tracking CF data
 FILE *errp;
 
+std::map<int, std::map<int,int>> s_vids; //the last arrival of vehicle ids
+
 mybehavioralModel:: mybehavioralModel () : A2BehavioralModel() 
 { 
 	int exp_id = ANGConnGetExperimentId();
@@ -597,6 +599,8 @@ A2SimVehicle *mybehavioralModel::
 			ANGConnGetAttribute(debug_track_id_str), exp_id));
 
 		//adjust initial speed and pos if necessary
+		res->setInitialLeaderId(UpdateLatestArrival(res->getId(), 
+			res->getIdCurrentSection(), res->getIdCurrentLane()));
 		res->setNewArrivalAdjust(true);
     }
 
@@ -673,5 +677,34 @@ int mybehavioralModel::ReadGapModel(int exp_id)
 	return 
 		ANGConnGetAttributeValueInt(ANGConnGetAttribute(gap_model_code), exp_id);
 
+}
+
+int mybehavioralModel::UpdateLatestArrival(int vid, int secid, int lane_id)
+{
+	std::map<int,std::map<int, int>>::iterator it;
+	it = s_vids.find(secid);
+	if(it == s_vids.end())
+	{
+		std::map<int, int> tempmap;
+		tempmap.insert(std::pair<int,int>(lane_id,vid));
+		s_vids.insert(std::pair<int,std::map<int,int>>(secid,tempmap));
+		return -1;
+	}
+	else
+	{
+		std::map<int, int> tempmap = it->second;
+		std::map<int,int>::iterator it2 = tempmap.find(lane_id);
+		if(it2 == tempmap.end())
+		{
+			it->second.insert(std::pair<int,int>(lane_id,vid));
+			return -1;
+		}
+		else
+		{
+			int tempid = it2->second;
+			it->second[lane_id] = vid;
+			return tempid;
+		}
+	}
 }
 

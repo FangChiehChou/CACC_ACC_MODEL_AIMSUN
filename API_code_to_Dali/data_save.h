@@ -12,6 +12,8 @@
 #define CONTR_SW 0
 
 #define MERGE_SECTION 332
+#define QUIT -1
+#define STABLE_THRD 100
 
 //char data_saving_dir[len_str]="a";
 
@@ -75,6 +77,9 @@ int save_networkinfo(char * data_saving, unsigned replic, int accp, int caccp);
 int save_detector_info();
 //int data_dir(char* data_saving_dir, unsigned int contr_sw);
 
+bool IsStable(double speed);
+std::vector<double> previous_speed;
+double avg_vector();
 
 void DisableCertainBehavior()
 { 
@@ -90,8 +95,6 @@ void DisableCertainBehavior()
 	const unsigned short *recoverString = AKIConvertFromAsciiString( 
 		"GKExperiment::recoverAtt" );
 	ANGConnSetAttributeValueDouble(ANGConnGetAttribute( recoverString ), exp_id, 1e8);
-
-
 }
 
 
@@ -602,8 +605,18 @@ int save_data(double absolute_time)
 	{
 		if(fabs(absolute_time-last_sect_readtime-sectStatInterval)<1e-3)
 		{
-			read_section(absolute_time);
-
+			if(IsBatchMode() == true)
+			{
+				//quit simulation
+				if(read_section(absolute_time) == QUIT)
+				{
+					return QUIT;
+				}
+			}
+			else
+			{
+				read_section(absolute_time);
+			}
 			last_sect_readtime=absolute_time;
 		}
 	}
@@ -705,6 +718,39 @@ int get_nodeIds()
 	return 0;
 }
 
+double avg_vector()
+{
+	double sum = 0;
+	for(int i=0;i<previous_speed.size();i++)
+	{
+		sum+=previous_speed.at(i);
+	}
+	if(previous_speed.size()>0)
+		return sum/(double)previous_speed.size();
+	return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// if it is run in batch mode and if the merging section's speed is stable 
+// then quit
+//////////////////////////////////////////////////////////////////////////
+bool IsStable(double speed)
+{
+	if(previous_speed.size() < 5)
+	{
+		previous_speed.push_back(speed);
+		return false;
+	}
+	if(std::abs(speed - avg_vector())<STABLE_THRD)
+		return true;
+	else		
+	{
+		previous_speed.erase(previous_speed.begin());
+		previous_speed.push_back( speed);
+		return false;
+	}
+}
+
 int read_section(double time)
 {
 	int i;
@@ -719,7 +765,15 @@ int read_section(double time)
 		else
 		{
 			fprintf(sfp,"%10.2lf\t%d\t%10.2lf\t%10.2lf\t%10.2lf\t%10.2lf\t%10.2lf\t%10.2lf\t%10.2lf\t%10.2lf\n",
-				time,secinfo.Id,double(secinfo.Flow),secinfo.TTa,secinfo.DTa,secinfo.Sa,secinfo.Density,secinfo.LongQueueAvg,secinfo.TotalTravel,secinfo.TotalTravelTime);
+					time,secinfo.Id,double(secinfo.Flow),secinfo.TTa,secinfo.DTa,secinfo.SHa,secinfo.Density,secinfo.LongQueueAvg,secinfo.TotalTravel,secinfo.TotalTravelTime);
+
+			if(IsBatchMode()==true 
+				&& secinfo.Id == MERGE_SECTION 
+				&& IsStable(secinfo.Flow) == true
+				&& time > 15*60.0)
+			{
+				return -1;
+			}
 		}
 	}
 	return 0;

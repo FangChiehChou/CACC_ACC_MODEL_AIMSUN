@@ -5,12 +5,14 @@
 
 %% first define paramters
 clear all;
-rid = 461;%replication id
-acc=0;
+rids = [904,416];%replication id
+acc = 0;
 cacc=0;
 merge_section = 332;
+mainlane = 330;
+ramp = 331;
 data_dir = strcat('C:\CACC_Simu_Data\acc',int2str(acc),...
-    '_cacc',int2str(cacc),'\',int2str(rid),'\detector\');
+    '_cacc',int2str(cacc),'\',int2str(rids(1,1)),'\detector\');
 listing = dir(data_dir);
 [row,~] = size(listing);
 flowindex =1;
@@ -34,13 +36,18 @@ for i=1:row
         end
     end
 end
+
 % combine flows
 flows = [onramp; through; offramp];
 flowindex=flowindex-1;
 
 %% then import files
 for i=1:flowindex
-    % read merging area data
+    data={};
+    for j = 1: length(rids)
+        data_dir = strcat('C:\CACC_Simu_Data\acc',int2str(acc),...
+                '_cacc',int2str(cacc),'\',int2str(rids(1, j)),'\detector\');
+% read merging area data
 %     fileID_merge = fopen(strcat(data_dir,'\',mergefilenames{1,i}));
 %     merging_area = textscan(fileID_merge,...
 %         '%f %f %f %f %f',...
@@ -51,14 +58,21 @@ for i=1:flowindex
 %        = ProcessSectionData(merging_data{i});
     
     %read section data
-    fileID_section = fopen(strcat(data_dir,'\',sectionfilenames{1,i}));
-    section = textscan(fileID_section,...
-        '%f %f %f %f %f %f %f %f %f %f',...
-        'Delimiter',',','EmptyValue',-Inf); 
-    section_data{i} = cell2mat(section); 
-    fclose(fileID_section);
-    mergesectiondata(i,:)...
-       = ProcessSectionData(section_data{i},merge_section);
+        fileID_section = fopen(strcat(data_dir,'\',sectionfilenames{1,i}));
+        if(fileID_section > 0)
+            section = textscan(fileID_section,...
+                '%f %f %f %f %f %f %f %f %f %f',...
+                'Delimiter',',','EmptyValue',-Inf); 
+            data{j}...
+                = ProcessSectionData(cell2mat(section),...
+                    merge_section, mainlane, ramp);
+            fclose(fileID_section);
+        end
+    end
+    if(~isempty(data))
+        mergesectiondata(i,:)...
+            = mean(data{1,:},1);
+    end
 %     mergesectiondata(i,:) = 
         
     %read detector data
@@ -70,7 +84,6 @@ for i=1:flowindex
 %     fclose(fileID_detector);
 %     mergesectiondata(i,:)...
 %        = ProcessSectionData(merging_data{i});
-    
 end
 
 %% plot figures

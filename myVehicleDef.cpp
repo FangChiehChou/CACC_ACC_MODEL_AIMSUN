@@ -3167,68 +3167,76 @@ void myVehicleDef::AjustArrivalVehicle()
 	//find the last veh on the list of the section with the same lane
 	//and put this vehicle with a equilibrium distance with the leader
 	
-	int num_veh_sec = 
-		AKIVehStateGetNbVehiclesSection(getIdCurrentSection(), true);
-	
-	double leader_length = 0;
-	for (int i=num_veh_sec-1;i>=0;i--)
+	if(this->getInitialLeaderId()>0)
 	{
-		InfVeh info_veh
-			= AKIVehStateGetVehicleInfSection
-			(getIdCurrentSection(),i);
-		if (info_veh.idVeh == getId())
-			continue;
-		if(getIdCurrentLane() == info_veh.numberLane)
-		{
-			if(info_veh.CurrentPos < this->getPosition()
-				||
-			   (info_veh.CurrentPos == this->getPosition()&& info_veh.idVeh < this->getId())
-				)
-				continue;
-			AKIVehSetAsTracked(info_veh.idVeh);
-			StaticInfVeh vehinfo = 
-				AKIVehTrackedGetStaticInf(info_veh.idVeh);
-			leader_length = vehinfo.length;
-			//determine the equilibrium state regarding the leader
-			//that is when the acceleration equal zero and 
-			//the speed is at its desired speed
-			double v = MIN(info_veh.CurrentSpeed/3.6, this->getFreeFlowSpeed());// be careful, here info_veh speed is in [km/h]
-			double eq_pos = GetEquPosition(info_veh.CurrentPos,
-				leader_length, v);
-			if(eq_pos<0)
+		int leaderid = getInitialLeaderId();
+		/*int num_veh_sec = 
+			AKIVehStateGetNbVehiclesSection(getIdCurrentSection(), true);*/
+		
+		double leader_length = 0;
+		/*for (int i=num_veh_sec-1;i>=0;i--)
+		{*/
+
+			AKIVehSetAsTracked(leaderid);
+			InfVeh info_veh = AKIVehTrackedGetInf(leaderid);
+			if (info_veh.idVeh != getId())
 			{
-				setNewPosition(0, 
-					0);
-				this->setNewArrivalAdjust(true);
-			}
-			else
-			{
-				double v_after_tau = GippsDecelerationTerm(
-					this->getMAXdec(),this->getReactionTime(),this->getGippsTheta(),info_veh.CurrentPos,
-					0,this->getJamGap(),
-					leader_length,v,info_veh.CurrentSpeed/3.6,  // be careful, here info_veh speed is in [km/h]
-					getEstimateLeaderDecCoeff()*this->getMAXdec()); 
-				if(v_after_tau < v )
+				if(getIdCurrentSection() == info_veh.idSection
+					&& 
+					getIdCurrentLane() == info_veh.numberLane)
 				{
-					setNewPosition(0, 
-						0);
-					this->setNewArrivalAdjust(true);
-				}
-				else
-				{					
-					setNewPosition(this->getPosition(),
-						v);
-					this->setNewArrivalAdjust(false);
-					setFirstCycleAfterAdjust(true);
+					/*if(info_veh.CurrentPos > this->getPosition()
+						||
+						(info_veh.CurrentPos == this->getPosition() && leaderid < this->getId())
+					    )*/
+					{
+						StaticInfVeh vehinfo = 
+							AKIVehTrackedGetStaticInf(info_veh.idVeh);
+						AKIVehSetAsNoTracked(info_veh.idVeh);
+						leader_length = vehinfo.length;
+						//determine the equilibrium state regarding the leader
+						//that is when the acceleration equal zero and 
+						//the speed is at its desired speed
+						double v = MIN(info_veh.CurrentSpeed/3.6, this->getFreeFlowSpeed());// be careful, here info_veh speed is in [km/h]
+						double eq_pos = GetEquPosition(info_veh.CurrentPos,
+							leader_length, v);
+						if(eq_pos<0)
+						{
+							setNewPosition(0, 
+								0);
+							this->setNewArrivalAdjust(true);
+						}
+						else
+						{
+							double v_after_tau = GippsDecelerationTerm(
+								this->getMAXdec(),this->getReactionTime(),this->getGippsTheta(),info_veh.CurrentPos,
+								0,this->getJamGap(),
+								leader_length,v,info_veh.CurrentSpeed/3.6,  // be careful, here info_veh speed is in [km/h]
+								getEstimateLeaderDecCoeff()*this->getMAXdec()); 
+							if(v_after_tau < v )
+							{
+								setNewPosition(0, 
+									0);
+								this->setNewArrivalAdjust(true);
+							}
+							else
+							{					
+								setNewPosition(this->getPosition(),
+									v);
+								this->setNewArrivalAdjust(false);
+								setFirstCycleAfterAdjust(true);
+							}
+						}
+						/*if(GetEquPosition(info_veh.CurrentPos,
+							leader_length)<0)
+						{
+							setNewPosition(0, 0);
+						}*/
+						return;
+					}
 				}
 			}
-			/*if(GetEquPosition(info_veh.CurrentPos,
-				leader_length)<0)
-			{
-				setNewPosition(0, 0);
-			}*/
-			return;
-		}
+		//}
 	}
 	
 	//only one car there and it is itself
@@ -3236,6 +3244,7 @@ void myVehicleDef::AjustArrivalVehicle()
 		this->getFreeFlowSpeed());
 	setFirstCycleAfterAdjust(true);
 	this->setNewArrivalAdjust(false);
+	
 }
 
 double myVehicleDef::getFrictionCoef()
@@ -3297,6 +3306,11 @@ bool myVehicleDef::isLaneChangingPossible(int target_lane)
 		}
 	}
 	return A2SimVehicle::isLaneChangingPossible(target_lane);
+}
+
+void myVehicleDef::setInitialLeaderId(int id)
+{
+	this->initial_leader_id = id;
 }
 
 

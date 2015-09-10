@@ -72,7 +72,17 @@ int AAPIPostManage(double time, double timeSta, double timTrans, double acicle)
 	if(time>timTrans && (time-timTrans)==count*detInterval)
 	{
 		//readDetector_s(time-timTrans);  
-		save_data(time-timTrans);
+		if(IsBatchMode()==true)
+		{
+			if(save_data(time-timTrans) == QUIT)
+			{
+				AKISetEndSimTime(AKIGetCurrentSimulationTime()+1);
+			}
+		}
+		else
+		{
+			save_data(time-timTrans);
+		}
 		count++;
 	}
 	

@@ -279,6 +279,7 @@ public:
 	bool first_cycle_after_adjust;
 	double desire_headway;
 	double friction_coeff;
+	int initial_leader_id;
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -451,5 +452,7 @@ public:
 	bool IsSectionSource(int sec_id);
 	int DetermineReceiveOrLcOrCoop();
 	bool isLaneChangingPossible(int target_lane);
+	void setInitialLeaderId(int id);
+	int getInitialLeaderId(){return this->initial_leader_id;};
 };
 #endif

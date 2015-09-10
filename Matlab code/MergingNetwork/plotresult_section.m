@@ -8,28 +8,30 @@ if isramp == 1
     suffix = strcat( 'Ramp volume = ',int2str(ramp),' veh/hr');
 end
     
-figure(1);
+subplot(2,2,1);
 plot(x,y(:,3), 'ro','LineWidth', 2); 
 xlabel(xlab)
 ylabel('Traffic throughput [vph]')
 title(suffix);
 
-figure(2);
+subplot(2,2,2);
 plot(x,y(:,4), 'ro', 'LineWidth', 2); 
-xlabel(xlab)
-ylabel('Travel time [s]')
+xlabel(xlab);
+ylabel('Travel time [s]');
+ylim([0,50]);
 title(suffix);
 
-figure(3);
+subplot(2,2,3);
 plot(x,y(:,6), 'ro', 'LineWidth', 2); 
-xlabel(xlab)
-ylabel('Speed [km/h]')
+xlabel(xlab);
+ylabel('Speed [km/h]');
+ylim([0,120]);
 title(suffix);
 
-figure(4);
+subplot(2,2,4);
 plot(x,y(:,7), 'ro', 'LineWidth', 2);
-xlabel(xlab)
-ylabel('Density [veh/km]')
+xlabel(xlab);
+ylabel('Density [veh/km]');
 title(suffix);
 
 

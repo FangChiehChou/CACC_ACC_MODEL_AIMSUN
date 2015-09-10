@@ -77,6 +77,7 @@ public:
 
 	std::string ReadModel();
 	int ReadGapModel(int exp_id);
+	int UpdateLatestArrival(int vid, int secid, int lane_id);
 	bool IsPrintCF;
 
 	/*void CheckorCreateDirs(int replication, int acc, int cacc);
