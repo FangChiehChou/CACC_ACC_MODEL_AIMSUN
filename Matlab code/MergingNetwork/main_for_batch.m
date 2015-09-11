@@ -5,7 +5,8 @@
 
 %% first define paramters
 clear all;
-rids = [904,461,905,906,907];%replication id
+close all;
+rids = [461,904];%replication id
 acc = 0;
 cacc=0;
 merge_section = 332;
@@ -102,9 +103,22 @@ for i=1:num_flows
         data(j,:) = mergesectiondata(col(1,j),:);
     end
     plotresult_section(ramp, through_vol, data, 1);
+    whole_data{i} = data;
+    through_vols{i} = through_vol;
 end
 
+plot_by_category(whole_data,3,2,4,1,'Traffic throughput [vph]',[0,9000],unique_ramp,...
+    through_vols);
+plot_by_category(whole_data,4,2,4,1,'Travel time [s]',[0,300],unique_ramp,...
+    through_vols);
+plot_by_category(whole_data,6,2,4,1,'Speed [km/h]',[0,120],unique_ramp,...
+    through_vols);
+plot_by_category(whole_data,7,2,4,1,'Density [veh/km]',[0,60],unique_ramp,...
+    through_vols);
+
 % figs through flow
+whole_data={};
+through_vols={};
 [unique_ramp,~,~] = unique(flows(2,:));
 num_flows = length(unique_ramp);
 for i=1:num_flows
@@ -118,6 +132,17 @@ for i=1:num_flows
         data(j,:) = mergesectiondata(col(1,j),:);
     end
     plotresult_section(ramp, ramp_vol, data, 0);
+    whole_data{i} = data;
+    through_vols{i} = ramp_vol;
 end
+
+plot_by_category(whole_data,3,2,4,0,'Traffic throughput [vph]',[0,9000],unique_ramp,...
+    through_vols);
+plot_by_category(whole_data,4,2,4,0,'Travel time [s]',[0,300],unique_ramp,...
+    through_vols);
+plot_by_category(whole_data,6,2,4,0,'Speed [km/h]',[0,120],unique_ramp,...
+    through_vols);
+plot_by_category(whole_data,7,2,4,0,'Density [veh/km]',[0,60],unique_ramp,...
+    through_vols);
 
 
