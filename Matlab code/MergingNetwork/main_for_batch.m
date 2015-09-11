@@ -5,7 +5,7 @@
 
 %% first define paramters
 clear all;
-rids = [904,416];%replication id
+rids = [904,461,905,906,907];%replication id
 acc = 0;
 cacc=0;
 merge_section = 332;
@@ -63,7 +63,7 @@ for i=1:flowindex
             section = textscan(fileID_section,...
                 '%f %f %f %f %f %f %f %f %f %f',...
                 'Delimiter',',','EmptyValue',-Inf); 
-            data{j}...
+            data{j,1}...
                 = ProcessSectionData(cell2mat(section),...
                     merge_section, mainlane, ramp);
             fclose(fileID_section);
@@ -71,7 +71,7 @@ for i=1:flowindex
     end
     if(~isempty(data))
         mergesectiondata(i,:)...
-            = mean(data{1,:},1);
+            = mean(cell2mat(data),1);
     end
 %     mergesectiondata(i,:) = 
         
