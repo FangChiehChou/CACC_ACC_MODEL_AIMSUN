@@ -2,13 +2,15 @@ function [speedMat,timePointList,...
     disHeadwayMat, headwayMat, posMat,accMat, ruleMat, dissafetyMat] ...
             = runTrip(realTraj, nFollower, modelCode)
 
-    desireHeadway = 1.6; %initial parameter
+    desireHeadway = 1.3; %initial parameter
     vehLen = 6;
     jamGap = 2;
     maxAcc=2;
     maxDec=2;
     freeFlowSpeed = 40;
-    reaction_Time = desireHeadway;
+    reaction_Time = 0.5;
+    theta = 0.3;
+    b_estimate = 1.1;
 
     colSpeed = 2; % Column 1: time in [s]
     colTime = 1; % Column 2: speed in  [m/s].
@@ -133,7 +135,9 @@ function [speedMat,timePointList,...
                                 reaction_Time,...
                                 jamGap,...
                                 freeFlowSpeed,...
-                                current_acc);    
+                                current_acc,...
+                                theta,...
+                                b_estimate);    
                  ruleMat(iTime, iFollower) = rule;      
              
             elseif modelCode == 5 % NGSIM with patch with IDM

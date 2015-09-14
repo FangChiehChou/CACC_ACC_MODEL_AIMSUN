@@ -10,7 +10,7 @@ CACC = 0;
 CACC_LU = 1;
 CACC_LU_NO_CONTRAINT = 2;
 NGSIM = 3;
-NGSIM_PATCH_PATH=4; % This is the model adopted
+NGSIM_PATCH_PATH=4; % This
 NGSIM_PATCH_IDM = 5;
 IDM = 6;
 %% Read Real Traj File of the leader
@@ -18,7 +18,7 @@ load('realTraj');
            
 nFollower = 5; % number of Followers
 
-modelCode = CACC_LU_NO_CONTRAINT;
+modelCode = NGSIM_PATCH_1;
 [speedMat, timePointList,distHeadwayMat, headwayMat,posMat,accMat, ruleMat] = ...
     runTrip(highSpeedTraj,nFollower,modelCode);
 plotCompFigure(speedMat, timePointList, 'Speed [m/s]');
