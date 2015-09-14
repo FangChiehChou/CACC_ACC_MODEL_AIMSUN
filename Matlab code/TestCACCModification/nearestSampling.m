@@ -1,6 +1,5 @@
 function [timePointList, speedList] = nearestSampling(delta, x, y)
-    
-    
+       
     startTime = round(min(x),1);
     endTime = max(x);
     

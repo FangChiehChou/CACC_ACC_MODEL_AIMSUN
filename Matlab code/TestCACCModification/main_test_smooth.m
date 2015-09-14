@@ -11,7 +11,7 @@ NGSIM = 3;
 NGSIM_PATCH_1=4;
 NGSIM_PATCH_IDM = 5;
 IDM = 6;
-%% Read Real Traj File of the leader
+%% Hypothetical leader profile
 SpeedTraj = makeprofile();
            
 nFollower = 1; % number of Followers
