@@ -17,7 +17,11 @@ for k=1:row*col
         j=j+1;
     end
     subplot(row,col, k);
-    plot(through_vol{k}, whole_data{k}(:, column_index), 'ro','LineWidth', 2);
+    plot(through_vol{k}, whole_data{k}(:, column_index), 'ro','LineWidth', 2); hold on;
+    if ~isempty(strfind(cellstr(ylab),'Throughput'))
+        plot(cell2mat(through_vol),cell2mat(through_vol)+volumes(1,k),'b','LineWidth', 2);
+    end
+    hold off; 
     titlestr = strcat(suffix, int2str(volumes(1,k)),' veh/hr');
     xlabel(xlab);
     ylabel(ylab);
