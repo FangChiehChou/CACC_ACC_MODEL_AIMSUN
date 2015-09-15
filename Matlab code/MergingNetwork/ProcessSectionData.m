@@ -6,19 +6,19 @@ function res = ...
 tempdata = data(data(:,2) == sectionid,:);
 % remove the first 2 rows for warm-up
 tempdata(1:2, :)=[];
-res = mean(tempdata);
+res = mean(tempdata); % throughput
 
 %travel time
 tempdata = data(data(:,2) == leading_sec,:);
 tempdata(1:2, :)=[];
-res(1, 4) = res(1, 4) +mean(tempdata(:,4));
-res(1,6) = (res(1,6) + mean(tempdata(:,6)))/2;
+res(1, 4) = res(1, 4) +mean(tempdata(:,4)); % travel time
+res(1,6) = (res(1,6) + mean(tempdata(:,6)))/2; % speed
 
 %travel time
 tempdata = data(data(:,2) == ramp_sec,:);
 tempdata(1:2, :)=[];
-res(1, 4) = res(1, 4) +mean(tempdata(:,4));
-res(1,6) = (res(1,6) + mean(tempdata(:,6)))/2;
+res(1, 4) = res(1, 4) +mean(tempdata(:,4)); % travel time
+res(1,6) = (res(1,6) + mean(tempdata(:,6)))/2;  % speed
 
 % s_r_simu = sum(data(:,2))/n_row*0.621371; % from [km/h] to [mph]
 % s_o_simu = sum(data(:,3))/n_row*0.621371; % from [km/h] to [mph]

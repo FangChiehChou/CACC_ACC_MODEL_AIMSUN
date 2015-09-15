@@ -97,7 +97,7 @@ for i=1:length(unique_ramp)
     ramp = unique_ramp(1, i);
     for j=1:length(unique_mainlane)   
         mainlane = unique_mainlane(1, j);
-        [~, col] = find(flows(1,:)== ramp & flows(2,:)== mainlane);
+        [~, col] = find(flows(1,:)== ramp && flow(2,:)== unique_mainlane(j));
         if ~isempty(col)
             speed(i,j) = mergesectiondata(col(1,1), 6);
             through(i,j) = mergesectiondata(col(1,1), 3);

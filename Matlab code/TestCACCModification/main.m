@@ -18,7 +18,7 @@ load('realTraj');
            
 nFollower = 5; % number of Followers
 
-modelCode = CACC_LU_NO_CONTRAINT;
+modelCode = NGSIM;
 [speedMat, timePointList,distHeadwayMat, headwayMat,posMat,accMat, ruleMat] = ...
     runTrip(highSpeedTraj,nFollower,modelCode);
 plotCompFigure(speedMat, timePointList, 'Speed [m/s]');
