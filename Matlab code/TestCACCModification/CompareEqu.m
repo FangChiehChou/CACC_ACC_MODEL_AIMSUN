@@ -12,7 +12,7 @@
 clear;
 
 v_max = 40;
-tau = 0.5;
+tau = 1.3;
 theta = 0.2;
 b_f = -3;
 b_e = -3*1.1;
@@ -22,11 +22,11 @@ headway = 1.3;
 jamgap = 1;
 len = 4;
 
-for i=10:40
+for i=1:40
     speed_newell(i)=min(v_max,(i-jamgap)/headway);
 end
 
-for i=10:40
+for i=1:40
     speed_gipps(i)=min(v_max, ...
         max((tau+theta)/(1/-b_f-1/(-b_e))...
         *(-1+sqrt(1+(2*(i-(len+jamgap))*(1/-b_f-1/(-b_e)))/(tau+theta)^2)),0));
