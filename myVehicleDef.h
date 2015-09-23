@@ -17,8 +17,8 @@
 //#define CARveh  53
 //#define HOVveh  17859      
 //#define HIAveh  21350  // 811
-#define ACCveh  23053  // 812
-#define CACCveh 23057  // 813
+#define ACCveh  344  // 812
+#define CACCveh 346  // 813
 
 #define A_lim		1.0
 #define D_lim		2.0
@@ -89,7 +89,7 @@ public:
 	StaticInfVeh staticinfo;
 	InfVeh leader_info;
 	const A2SimVehicle* getLeader();
-	void RunNGSIM();
+	void RunNGSIM(bool mode_predetermined);
 	void RunACCCACC();
 	void UpdateVehicle(double simu_step);
 	bool ApplyNGSIMModel() ;
@@ -454,5 +454,6 @@ public:
 	bool isLaneChangingPossible(int target_lane);
 	void setInitialLeaderId(int id);
 	int getInitialLeaderId(){return this->initial_leader_id;};
+	int determineDrivingModeACC();
 };
 #endif

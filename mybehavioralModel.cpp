@@ -9,12 +9,14 @@
 #include <time.h>       /* time_t, struct tm, time, localtime */
 
 
-
-
 #define MAX(a,b)    (((a)>(b)) ? (a) : (b))
 #define MIN(a,b)    (((a)<(b)) ? (a) : (b))
 
 #define SAVE_SECTION 23551
+
+#define CAR 53
+#define ACC 23053
+#define CACC 23057
 
 //#define OUTPUT
 
@@ -251,8 +253,6 @@ void mybehavioralModel::PrintCACCFollowMsg(myVehicleDef* vehicle, myVehicleDef* 
 
 
 // Function: readVehTypeData
-// The following parameters are only required by Yeo Model not CACC Model
-// But we need to set the value for all vehicles if they switch to manual modes
 void mybehavioralModel::readVehTypeData( int vehTypeId)
 {
     A2BehavioralVehData data;
@@ -345,6 +345,11 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 		ANGConnGetAttribute( politeness_str ), vehTypeId );
 	data.politeness_=
 		MIN(MAX(0, data.politeness_),1);
+
+	if(vehTypeId == ACC || vehTypeId == CACC)
+	{
+		data.politeness_ = 0;
+	}
 
 	//set vehicle headway
 	const unsigned short *min_headway_String = 

@@ -110,6 +110,40 @@ void myVehicleDef::updateRegularCf()
 }
 
 //determine the current mode based on the mode from the last step
+//this is used for ACC or CACC vehicles
+int myVehicleDef::determineDrivingModeACC()
+{
+	int currentMode = getMode();
+
+	//do not do any lane changes on node
+	if(this->isCurrentLaneNode() == true)
+	{
+		switch (currentMode)
+		{
+			case BCF:
+				return setMode(CF);
+			default:
+				return getMode();
+		}
+	}
+	switch (currentMode)
+	{
+		case CF:
+			return DetermineLcOrMergeOrCoop(); //decide if lane change /merge /cooperation is needed
+		case  ACF:
+			return Determine2ndLcAfterLc(); //decide if another lane change follows this lane change
+		case CCF:
+			return determineCoopOrLc(); //see if it is willing to yield or itself needs a change
+		case RCF:
+			return DetermineReceiveOrLcOrCoop(); //see if it is needs a change or Coop or doing RCF
+		case BCF:
+			return determineGapOrGiveup();
+		default:
+			return currentMode;
+	}
+}
+
+//determine the current mode based on the mode from the last step
 //This function reorganized Hwasoo's code as the basic car following function 
 //In this function, lane changing conditions are tested, and the corresponding modes are set.
 int myVehicleDef::determineDrivingMode()
@@ -159,11 +193,15 @@ int myVehicleDef::determineDrivingMode()
 
 //run Yeo Model
 // each update function must do three things:
-// calculate the next position, call setnewposition, and set the mode for the next step
-void myVehicleDef::RunNGSIM()
-{              
-	
-	switch(determineDrivingMode())
+// calculate the next position, call set newposition, and set the mode for the next step
+void myVehicleDef::RunNGSIM(bool mode_predetermined)
+{ 	
+	int mode = 0;
+	if(mode_predetermined == true)
+		mode = getMode();
+	else
+		mode = determineDrivingMode();
+	switch(mode)
 	{
 		case CF:                          
 			updateRegularCf();
@@ -206,10 +244,7 @@ bool myVehicleDef::ApplyNGSIMModel()
 	A2KSectionInf sectioninfo = AKIInfNetGetSectionANGInf(sectionid);  
 	if (getapplyACC() == false //this is not a cacc or acc vehicle
 		||isCurrentLaneOnRamp() //this vehicle is on ramp
-		||(getIdCurrentLane() == 1 && sectioninfo.nbSideLanes >=1
-		|| this->getIdCurrentSection() == FeederOnRamp
-		|| this->getMode() == ACF
-		|| this->source_section == FeederOnRamp) //this vehicle is on ramp
+		|| this->getIdCurrentSection() == FeederOnRamp //this vehicle is on ramp
 		)
 	{
 		return true;
@@ -241,7 +276,7 @@ void myVehicleDef::UpdateVehicle(double simu_step)
 
 	if(this->ApplyNGSIMModel())
 	{
-		RunNGSIM();
+		RunNGSIM(false);
 	}
 	//ACC and CACC behavior
 	//they are only applied to these vehicles without lane-changing intent
@@ -278,8 +313,12 @@ bool myVehicleDef::LetAimsunHandle()
 
 void myVehicleDef::RunACCCACC()
 {
-	if (VehID == this->getDebugTrackID())
-		VehID = VehID;
+	//use manual driving modal for 
+	if(determineDrivingModeACC() != CF)
+	{
+		this->RunNGSIM(true);
+		return;
+	}
 
 	//***********collect and record basic information
 	double	x_CF=0.0;
@@ -345,28 +384,24 @@ void myVehicleDef::RunACCCACC()
 			x_leader	= leader->getPosition(1); 
 			v_1_leader	=leader->getSpeed(2);
 			x_1_leader	=leader->getPosition(2); 
-			v_2_leader	=leader->getSpeed(3);
-			x_2_leader	=leader->getPosition(3); 
 		}
 		else
 		{
 			v_leader = leader->getSpeed(0); 
 			x_leader = leader->getPosition(0); 
 			v_1_leader = leader->getSpeed(1);
-			x_1_leader = leader->getPosition(1); 			
-			v_2_leader = leader->getSpeed(2);
-			x_2_leader = leader->getPosition(2); 
+			x_1_leader = leader->getPosition(1); 	
 		}
 
 		a_L_leader  = getMAXdec();
 		l_leader=leader->getLength();
 		gap=headway-l_leader;
 
-		if(ResumeMannual() == true)
+		/*if(ResumeMannual() == true)
 		{
-			RunNGSIM();
+			RunNGSIM(true);
 			return;
-		}
+		}*/
 
 		d_leader = -(v_leader * v_leader) / (2*a_L_leader);
 

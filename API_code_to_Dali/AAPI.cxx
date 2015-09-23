@@ -37,6 +37,8 @@ int AAPIInit()
 	double acc_percent = 0;
 	double cacc_percent = 0;
 	read_precentage(acc_percent,cacc_percent);
+	ACC_percent = acc_percent;
+	CACC_percent = cacc_percent;
 	//****************
 
 	Init_sim_data_out(acc_percent, cacc_percent);

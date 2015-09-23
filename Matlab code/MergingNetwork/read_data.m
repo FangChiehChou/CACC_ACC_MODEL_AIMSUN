@@ -1,6 +1,6 @@
 %% load both PEMS and Chengju data to plot
 clear all;
-load ('SR99N_Sep_18_2014_pems.mat');
+load ('SR99N_Sep_18_2014_pems1.mat');
 
 pems_ids = cell2mat(pemsoutput(:,7));
 pm = cell2mat(pemsoutput(:, 5));
@@ -18,10 +18,17 @@ for i=1:length(detectorID)
 end
 
 % get detector reordered by pm
-lane_id  = 2;
-flow = flow(:, detectorID(:, 3)== lane_id & detectorID(:, 2)>0);
-speed = speed(:, detectorID(:, 3)== lane_id & detectorID(:, 2)>0);
-detectorID = detectorID(detectorID(:, 3)== lane_id & detectorID(:, 2)>0,:);
+laneids = [2,3];
+rows = (detectorID(:, 3) == laneids(1))...
+    | (detectorID(:, 3) == laneids(2));
+tempflow1 = flow(:, rows & detectorID(:, 2)>0);
+tempspeed2= speed(:, rows & detectorID(:, 2)>0);
+detectorID = detectorID(rows & detectorID(:, 2)>0,:);
+
+[u,I,J] = unique(detectorID(:, 2), 'rows', 'first');
+hasDuplicates = size(u,1) < size(detectorID(:, 2),1);
+ixDupRows = setdiff(1:size(detectorID(:, 2),1), I);
+
 [~, index] = sort(detectorID(:, 2));
 detectorID = detectorID(index,:);
 

@@ -15,8 +15,8 @@
 #define Car_Type  53  
 #define HOVveh_Type  17859
 #define HIAveh_Type  21350  // 811
-#define ACCveh_Type  23053  // 812
-#define CACCveh_Type 23057  // 813
+#define ACCveh_Type  344  // 812
+#define CACCveh_Type 346  // 813
 #define RAMP_ID 23554
 #define MAINLANE 23552
 #define ACC_LENGTH 820 //in feet
@@ -613,6 +613,7 @@ int dmd_generate_matrix(double time,
 										veh_type = CACCveh_Type;
 									else
 										veh_type = Car_Type;
+
 									//put a car on the section
 									if(AKIPutVehTrafficOD
 											(orgin_section[origin], k+1, 
