@@ -45,10 +45,15 @@ int AAPIInit()
 
 	//****************Added by Dali Wei modify demand for all slices for generating CACC and ACC penetration rates
 	//dmd_modify_cacc_linear(acc_percent, cacc_percent);
-	ModifyMatrixDemand(acc_percent, cacc_percent);
+	//ModifyMatrixDemand(acc_percent, cacc_percent);
 	//modify cooperate factor for on ramps
 	/*double coop = 1;
 	modify_section_cooperation(coop);*/
+	
+	//read direct outputs from the pems dataset and transfer it into states
+	dmd_create_pems(acc_percent, cacc_percent);
+	
+
 	//****************
 
 	init_data_saving(replication,(int)( acc_percent*100),(int)(cacc_percent*100));
@@ -63,7 +68,10 @@ int AAPIManage(double time,
 			   double timeSta, double timTrans, 
 			   double acicle)
 {	
-	dmd_generate_matrix(time, 
+	/*dmd_generate_matrix(time, 
+		timeSta, timTrans, 
+		acicle);*/
+	dmd_generate_section(time, 
 		timeSta, timTrans, 
 		acicle);
 	return 0;
