@@ -54,7 +54,7 @@
 #define RAMP_SPEED 25
 #define CREEP_SPEED 20
 
-#define COMF_LEVEL 0.5 //the comfortable level of deceleration
+#define COMF_LEVEL 0.7 //the comfortable level of deceleration
 #define ACCEPT_LEVEL 0.9 //the accepted level of deceleration for on-ramp sync
 #define DANGER_GAP 0.8
 #define MIN_REGAIN_AUTO_SPEED 5
@@ -69,7 +69,7 @@
 #define NO_RAMP 0
 
 #define ACC_LANE_LENGTH 250 //Length of on-ramp acceleration lane[m]
-#define FORBID_RAMPCHANGE_ZONE 50 //Length of on-ramp acceleration lane[m]
+#define FORBID_RAMPCHANGE_ZONE 0 //Length of on-ramp acceleration lane[m]
 
 double bound(double x,double x_high,double x_low)
 {
@@ -1340,14 +1340,15 @@ double myVehicleDef::PosCf(const A2SimVehicle* leader)
 //using a weight coefficient
 bool myVehicleDef::NeedLC()
 {
-
 	ResetDesires();
+	if(this->GetRampType(this->getIdCurrentSection()) == TRUE_ON_RAMP)
+		return CombineLCDesires();
 	//discretionary 
 	NeedDlc();
 	//mandatory options are exclusive
 	if(NeedRampLc()==false)
-		if(NeedLc4Turning()==false)
-			NeedLcExit();
+		if(NeedLc4Turning()==false){}
+			//NeedLcExit();
 	//combine all options
 	//within combine desires, we set lc type
 	return CombineLCDesires();
@@ -2098,6 +2099,32 @@ bool myVehicleDef::NeedRampLc()
 		this->setMandatoryType(RAMP);
 		return true;
 	}
+	//else // to see if the connecting lane on the next section is also a on-ramp
+	//{
+	//	int next_sec_center_lanes = 0;
+	//	if(getNextSectionRampType(next_sec_center_lanes) != ON_RAMP)
+	//	{
+	//		return false;
+	//	}
+	//	else
+	//	{
+	//		// the current lane is at the rightmost lane except the side lanes
+	//		// and the lane difference between the two sections 
+	//		if ((this->getIdCurrentLane() - sectionInfo.nbSideLanes <= 1)
+	//			&&
+	//			sectionInfo.nbCentralLanes 
+	//			> next_sec_center_lanes)
+	//		{	
+	//			double incentive = 
+	//				CalculateDesireForce(1, this->getPositionNextTurning()-this->getPosition()+ACC_LANE_LENGTH,
+	//				this->getSpeed(),true);
+
+	//			this->setLaneChangeDesireForce(incentive, 0);
+	//			this->setMandatoryType(RAMP);
+	//			return true;
+	//		}
+	//	}
+	//}
 	
 	return false;
 }
@@ -2120,6 +2147,10 @@ double myVehicleDef::GetAdditionalDlcDesire(int target_lane)
 bool myVehicleDef::NeedDlc()
 {
 	//if(getLCTime()<=20) return false;
+
+	//disable truck's discretionary lane changing desire
+	if(this->getVehType() == Truck_Type)
+		return false;
 
     int target_lane = 0;
     double vf= 0.0;
@@ -2341,7 +2372,7 @@ bool myVehicleDef::NeedLc4Turning()
 	int n_lc=0;  // number of lane changes required to have turning
 	int lane = 0;
 	int conflictLane=0;
-	int index = 0;
+	int index = 2;
 	int exit_lane_from=0;
 	int exit_lane_to=0;	
 	double d_exit =0.0;
@@ -2349,7 +2380,7 @@ bool myVehicleDef::NeedLc4Turning()
 
 	lane = getIdCurrentLane();
 	conflictLane = GetConflictLane(this);
-	getIdTargetLanes4NextTurning(index, exit_lane_from, exit_lane_to);
+	getIdTargetLanes4NextTurning(0, exit_lane_from, exit_lane_to);
 
 	// check if left lane changing is needed
 	if (lane < exit_lane_from)
@@ -2406,6 +2437,10 @@ int myVehicleDef::NeedMCF()
 //see if the other vehicles need cooperation
 bool myVehicleDef::NeedCoop()
 {
+	// disable truck's cooperative driving behavior
+	if(this->getVehType() == Truck_Type)
+		return false;
+
 	this->CoopRequester = NULL;
 	//if both lanes have cooperation requesters
 	//select the one that is the closest
@@ -2623,23 +2658,24 @@ double myVehicleDef::CalculateDesireForce(int n_lc, double d_exit,
 	//determine the urgency
 	double dis2End = d_exit;
 	double time2End = d_exit/speed;
-	double para1 = (dis2End)/this->E/abs(n_lc);
-	double para2 = (time2End)/this->T/abs(n_lc);
+	double para1 = 0;
+	double para2 = 0;
+	if(is_for_on_ramp)
+		DesireEquation(para1, para2, dis2End, time2End, n_lc, 
+			this->getMinE4OnRamp(), this->getMinT4OnRamp(), this->getE4OnRamp(), this->getT4OnRamp()); // para1 and para2 are references
+	else
+		DesireEquation(para1, para2, dis2End, time2End, n_lc, 
+		this->getMinE4OffRamp(), this->getMinT4OffRamp(), this->getE4OffRamp(), this->getT4OffRamp()); // para1 and para2 are references
 
-	// for exiting the main-lane
-	if(!is_for_on_ramp)
-	{
-		//determine the urgency
-		dis2End = d_exit;
-		time2End = d_exit/speed;
-		para1 = (dis2End)/this->getOffRampE()/abs(n_lc);
-		para2 = (time2End)/this->getOffRampT()/abs(n_lc);
-	}
+	return MAX(para2, para1);
 	
-	return Bound_Function(MAX(1-para1, 1-para2));
+	//return Bound_Function(MAX(1-para1, 1-para2));
 	//return bound(MAX(1-para1, 1-para2), 1,0);
 }
 
+//////////////////////////////////////////////////////////////////////////
+//
+//////////////////////////////////////////////////////////////////////////
 void myVehicleDef::SetInitialVal()
 {
 	this->setLastLCTime(0);
@@ -3284,6 +3320,10 @@ void myVehicleDef::AjustArrivalVehicle()
 
 double myVehicleDef::getFrictionCoef()
 {
+	if (friction_coeff == 0)
+	{
+		return 1;
+	}
 	return friction_coeff;
 }
 
@@ -3346,6 +3386,57 @@ bool myVehicleDef::isLaneChangingPossible(int target_lane)
 void myVehicleDef::setInitialLeaderId(int id)
 {
 	this->initial_leader_id = id;
+}
+
+int myVehicleDef::getNextSectionRampType
+	(int& next_sec_center_lanes)
+{
+	int sectionid = getIdCurrentSection();		
+	A2KSectionInf sectioninfo = AKIInfNetGetSectionANGInf(sectionid);  
+
+	for(int i=0; i<sectioninfo.nbTurnings;i++)
+	{
+		int next_sec_id = 
+			AKIInfNetGetIdSectionANGDestinationofTurning(sectionid, i);
+		if(GetRampType(next_sec_id) != ON_RAMP)
+		{
+			continue;
+		}
+		else
+		{
+			next_sec_center_lanes 
+				= AKIInfNetGetSectionANGInf(next_sec_id).nbCentralLanes;
+			return this->GetRampType(next_sec_id);
+		}
+	}
+
+	return NO_RAMP;
+}
+
+void myVehicleDef::DesireEquation(double& para1, double& para2, double dis2End, 
+								  double time2End, int n_lc, double minE, double minT, double E, double T)
+{
+	if(dis2End < abs(n_lc)*E
+		|| 
+		time2End < abs(n_lc)*T)
+	{
+		if(minT > time2End
+			||
+			minE > dis2End)
+		{
+			para2  = 1;
+			para1 = 1;
+		}
+		else
+		{			
+			para2 = (time2End-minT)
+				/(T-minT)
+				/abs(n_lc);
+			para1 = (time2End-minE)
+				/(E-minE)
+				/abs(n_lc);
+		}
+	}
 }
 
 

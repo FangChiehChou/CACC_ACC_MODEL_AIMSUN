@@ -38,7 +38,7 @@ std::map<int,int> orgin_section; // the section that connects the origin
 double global_acc = 0;
 double global_cacc = 0;
 int global_interval = 0; //minutes
-int interval_shift = 8;//in hours
+int interval_shift = 5;//in hours
 
 int dmd_modify(double T)
 {
@@ -634,11 +634,20 @@ double dmd_generate_section(double time,
 				}
 
 				int res = 
-					AKIPutVehTrafficFlow(id,times.size()-k,AKIVehGetVehTypeInternalPosition(veh_type),0,0,turningid,false);				
+					AKIPutVehTrafficFlow(id,k+1,AKIVehGetVehTypeInternalPosition(veh_type),0,0,turningid,false);				
 				
+				if(k==0)
+					k=0;
+
 				//randomly generate the next time and replace
 				//with the value in vector
-				double avg_headway_flow = 3600.0/(((double)flows[id][time_index][k])/(double)global_interval*60.0);
+				
+				double avg_headway_flow = global_interval*60.0;
+				if(flows[id][time_index][k] > 0)				
+				{
+					avg_headway_flow = min(avg_headway_flow,
+						3600.0/(((double)flows[id][time_index][k])/(double)global_interval*60.0));
+				}
 				int new_time = (int)(RandomExpHeadway(1, avg_headway_flow)/acicle);
 				time_next[id][k] = new_time+current_step;
 			}

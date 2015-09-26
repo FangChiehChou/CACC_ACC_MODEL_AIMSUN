@@ -19,6 +19,7 @@
 //#define HIAveh  21350  // 811
 #define ACCveh  344  // 812
 #define CACCveh 346  // 813
+#define Truck_Type 56  // 813
 
 #define A_lim		1.0
 #define D_lim		2.0
@@ -41,6 +42,8 @@ private:
 	double jam_gap;
 	double E;
 	double T;
+	double min_E;
+	double min_T;
 	double distConflict;
 	int target_lane;
 	int RMode;  // Relaxation Mode 0: No relaxation, 1: relaxation 2: relaxation transition
@@ -407,9 +410,9 @@ public:
 	void BeforeExitorTurningLcSlowDown();
 	double PosCf2EndofExitTurning();
 	void setOffRampE(double val){this->off_ramp_e = val;};
-	double getOffRampE(){return this->off_ramp_e;};
+	double getE4OffRamp(){return this->off_ramp_e;};
 	void setOffRampT(double val){this->off_ramp_t = val;};
-	double getOffRampT(){return this->off_ramp_t;};
+	double getT4OffRamp(){return this->off_ramp_t;};
 	double GetAdditionalDlcDesire(int target_lane);
 	double Bound_Function(double param1);
 	double getPenaltyDLCNoExitLane(){return penalty_dlc_no_exitlane;};
@@ -455,5 +458,16 @@ public:
 	void setInitialLeaderId(int id);
 	int getInitialLeaderId(){return this->initial_leader_id;};
 	int determineDrivingModeACC();
+	int getNextSectionRampType(int& next_sec_center_lanes);
+
+	double getE4OnRamp(){return E>getMinE4OnRamp()?E:getMinE4OnRamp();};
+	double getMinE4OnRamp(){return min_E<50?50:min_E;};
+	double getT4OnRamp(){return T>getMinT4OnRamp()?T:getMinT4OnRamp();};
+	double getMinT4OnRamp(){return min_T<10?10:min_T;};
+
+	double getMinT4OffRamp(){return getMinT4OnRamp();};
+	double getMinE4OffRamp(){return getMinE4OnRamp();};
+	
+	void DesireEquation(double& para1, double& para2, double dis2End, double time2End, int n_lc, double minT, double minE, double T, double E);
 };
 #endif
