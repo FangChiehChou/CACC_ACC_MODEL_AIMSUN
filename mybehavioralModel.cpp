@@ -468,7 +468,7 @@ A2SimVehicle *mybehavioralModel::
 			res->alpha = 0.2;
 			res->beta = 0.6;
 			//steps depending on the delta t
-			res->ACF_Steps = 50;
+			res->ACF_Steps = 100;
 			res->ACF_Step = 0;
 			res->Relaxation = 0.4;
 		}

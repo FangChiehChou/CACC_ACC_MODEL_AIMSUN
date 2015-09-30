@@ -54,7 +54,7 @@
 #define RAMP_SPEED 25
 #define CREEP_SPEED 20
 
-#define COMF_LEVEL 0.7 //the comfortable level of deceleration
+#define COMF_LEVEL 0.8 //the comfortable level of deceleration
 #define ACCEPT_LEVEL 0.9 //the accepted level of deceleration for on-ramp sync
 #define DANGER_GAP 0.8
 #define MIN_REGAIN_AUTO_SPEED 5
@@ -785,7 +785,7 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 					isCurrentLaneOnRamp(),
 					false) == false)
 				{
-					Ok_downstream_gap = false;
+					Ok_upstream_gap = false;
 				}
 			}
 		}
@@ -1948,6 +1948,12 @@ void myVehicleDef::BeforeOnRampLcSync()
 	getUpDown((const A2SimVehicle *&)vehUp, 
 		(const A2SimVehicle *&)vehDown, this->getTargetLane(), 0);
 	double x_CF_Sync = PosCf(vehDown, 1, beta, alpha, Relaxation);
+
+	double max_accept_dec = getMaxDecInSync();//maximum acceptable deceleration at the current desire level
+	double speed = this->getSpeed()+max_accept_dec*delta_t;
+	double x_CF_Sync_Limit = this->getPosition() + (this->getSpeed()+speed)*delta_t/2; //position based on this most acceptable deceleration
+	x_CF_Sync = MAX(x_CF_Sync, x_CF_Sync_Limit);
+
 	double x_CF_NoSync = 0;
 	if(this->leader == NULL)
 	{
@@ -1958,13 +1964,14 @@ void myVehicleDef::BeforeOnRampLcSync()
 		x_CF_NoSync = PosCf(this->leader,1,beta,alpha, Relaxation);
 	}
 	double x=getPosition(0);
-
-	double sync_v = (x_CF_Sync - x) / delta_t*2-this->getSpeed();
+	
+	/*double sync_v = (x_CF_Sync - x) / delta_t*2-this->getSpeed();
 	if ((sync_v-this->getSpeed())/delta_t < ACCEPT_LEVEL*this->getMAXdec())
 	{
 		sync_v = this->getSpeed()+COMF_LEVEL*this->getMAXdec()*delta_t;
 		x_CF_Sync = x+(this->getSpeed()+sync_v)/2*delta_t;
-	}
+	}*/
+
 	setNewPosition(MIN(x_CF_NoSync,x_CF_Sync),
 			(MIN(x_CF_NoSync,x_CF_Sync) - x) / delta_t*2-this->getSpeed());
 }
@@ -2004,6 +2011,7 @@ void myVehicleDef::BeforeExitorTurningLcSync()
 	getUpDown((const A2SimVehicle *&)vehUp, 
 		(const A2SimVehicle *&)vehDown, this->getTargetLane(), 0);
 	double x_CF_Sync = PosCf(vehDown, 1, beta, alpha, Relaxation);
+
 	//the current leader
 	double x_CF_NoSync = 0;	
 	double posFollowEnd = PosCf2EndofExitTurning();
@@ -2099,32 +2107,32 @@ bool myVehicleDef::NeedRampLc()
 		this->setMandatoryType(RAMP);
 		return true;
 	}
-	//else // to see if the connecting lane on the next section is also a on-ramp
-	//{
-	//	int next_sec_center_lanes = 0;
-	//	if(getNextSectionRampType(next_sec_center_lanes) != ON_RAMP)
-	//	{
-	//		return false;
-	//	}
-	//	else
-	//	{
-	//		// the current lane is at the rightmost lane except the side lanes
-	//		// and the lane difference between the two sections 
-	//		if ((this->getIdCurrentLane() - sectionInfo.nbSideLanes <= 1)
-	//			&&
-	//			sectionInfo.nbCentralLanes 
-	//			> next_sec_center_lanes)
-	//		{	
-	//			double incentive = 
-	//				CalculateDesireForce(1, this->getPositionNextTurning()-this->getPosition()+ACC_LANE_LENGTH,
-	//				this->getSpeed(),true);
+	else // to see if the connecting lane on the next section is also a on-ramp
+	{
+		int next_sec_center_lanes = 0;
+		if(getNextSectionRampType(next_sec_center_lanes) != ON_RAMP)
+		{
+			return false;
+		}
+		else
+		{
+			// the current lane is at the rightmost lane except the side lanes
+			// and the lane difference between the two sections 
+			if ((this->getIdCurrentLane() - sectionInfo.nbSideLanes <= 1)
+				&&
+				sectionInfo.nbCentralLanes 
+				> next_sec_center_lanes)
+			{	
+				double incentive = 
+					CalculateDesireForce(1, this->getPositionNextTurning()-this->getPosition()+ACC_LANE_LENGTH,
+					this->getSpeed(),true);
 
-	//			this->setLaneChangeDesireForce(incentive, 0);
-	//			this->setMandatoryType(RAMP);
-	//			return true;
-	//		}
-	//	}
-	//}
+				this->setLaneChangeDesireForce(incentive, 0);
+				this->setMandatoryType(RAMP);
+				return true;
+			}
+		}
+	}
 	
 	return false;
 }
@@ -2167,6 +2175,8 @@ bool myVehicleDef::NeedDlc()
 
 	//int ind_lc = 0;	//index for LC (0: no LC, 1: left LC, -1:right LC)
 	
+	//d_scan cannot be larger than the section length
+
     vf= getFreeFlowSpeed();
     v_left = isLaneChangingPossible(1) ?
         getAverageSpeedAHead(1, d_scan, n_scan) : 0;
@@ -2201,9 +2211,11 @@ bool myVehicleDef::NeedDlc()
 		//MyPrintString("Try to left LC (%i)", getId());
 		//ind_lc = 1;
 		//lc_prob = (v_left - v_ahead) * delta_t / (vf * phi);
-		lc_prob = (v_left - v_ahead) / (vf)
+		lc_prob = (v_left - v_ahead) / (vf);
 			//*OnRampAddCoef()/** delta_t*/ 
-			;
+	
+		lc_prob = (1/v_ahead - 1/v_left)/(1/vf); //the time save  per unit (m)
+
 
 		/*if (mybehavioralModel::sampleUniformDist() < lc_prob)
         {*/
@@ -2222,6 +2234,8 @@ bool myVehicleDef::NeedDlc()
 		//lc_prob_right = (v_right - v_ahead) * delta_t / (vf * phi);
 		lc_prob_right = 
 			(v_right - v_ahead) / vf*this->getRightDLCCoeff()/** delta_t*/;
+
+		lc_prob_right = (1/v_ahead - 1/v_right)/(1/vf)*this->getRightDLCCoeff();
 
 		/*if (mybehavioralModel::sampleUniformDist() < lc_prob)
         {*/
@@ -2450,7 +2464,8 @@ bool myVehicleDef::NeedCoop()
 		(const A2SimVehicle *&)vehDown, LEFT, 0);
 	if(vehDown!=NULL
 		&& ((myVehicleDef*)vehDown)->getMode() == BCF
-		&& ((myVehicleDef*)vehDown)->getTargetLane() == RIGHT)
+		&& ((myVehicleDef*)vehDown)->getTargetLane() == RIGHT
+		&& ((myVehicleDef*)vehDown)->getLCType() != OPTIONAL) // only cooperate to mandatory
 	{
 		if(this->Willing2Coop(((myVehicleDef*)vehDown)))
 		{
@@ -2462,7 +2477,8 @@ bool myVehicleDef::NeedCoop()
 		(const A2SimVehicle *&)vehDown, RIGHT, 0);
 	if(vehDown!=NULL
 		&& ((myVehicleDef*)vehDown)->getMode() == BCF
-		&& ((myVehicleDef*)vehDown)->getTargetLane() == LEFT)
+		&& ((myVehicleDef*)vehDown)->getTargetLane() == LEFT
+		&& ((myVehicleDef*)vehDown)->getLCType() != OPTIONAL)
 	{
 		//find the leader 
 		double dis = ((myVehicleDef*)vehDown)->getPositionReferenceVeh
@@ -2992,7 +3008,7 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 
 //////////////////////////////////////////////////////////////////////////
 //gipps safety gaps
-//Gipps, Peter G. "A behavioural car-following model for 
+//Gipps, Peter G. "A behavioral car-following model for 
 //computer simulation." 
 //Transportation Research Part B: Methodological 15, no. 2 (1981): 105-111.
 //Eq. and (5)
@@ -3003,15 +3019,6 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 							  double v,double lead_v,double b_estimate,
 							  bool on_ramp, bool forward)
 {
-	double leader_stop_x 
-		= x_leader-pow(lead_v,2)/2/b_estimate;
-
-	//assuming no action was taken for reaction time +theta
-	double follower_stop_x
-		= x-pow(v,2)/2/maxDec+v*(reaction_time+theta); 
-
-	double thrd = pow(lead_v,2)/2/b_estimate-pow(v,2)/2/maxDec+v*(reaction_time+theta)+l_leader+jamGap;
-
 	double factor = 1;
 	if(on_ramp == true)
 	{
@@ -3032,7 +3039,22 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 			factor = b_gap_reduction_factor_offramp;
 	}
 
-	if ((x_leader - x)>thrd*factor)
+	b_estimate = b_estimate*factor;
+
+	double leader_stop_x 
+		= x_leader-pow(lead_v,2)/2/b_estimate;
+
+	//assuming no action was taken for reaction time +theta
+	double follower_stop_x
+		= x-pow(v,2)/2/maxDec+v*(reaction_time+theta); 
+
+	double thrd = pow(lead_v,2)/2/b_estimate-pow(v,2)/2/maxDec+v*(reaction_time+theta)+l_leader+jamGap;
+
+	/*if ((x_leader - x)>thrd*factor)
+	{
+		return true;
+	}*/
+	if ((x_leader - x)>thrd)
 	{
 		return true;
 	}
@@ -3379,6 +3401,10 @@ bool myVehicleDef::isLaneChangingPossible(int target_lane)
 				return false;
 			}
 		}
+		else if(this->getIdCurrentLane() == 2 && target_lane == RIGHT)
+		{
+			return false;
+		}
 	}
 	return A2SimVehicle::isLaneChangingPossible(target_lane);
 }
@@ -3429,14 +3455,23 @@ void myVehicleDef::DesireEquation(double& para1, double& para2, double dis2End,
 		}
 		else
 		{			
-			para2 = (time2End-minT)
+			para2 = 1-(time2End-minT)
 				/(T-minT)
 				/abs(n_lc);
-			para1 = (time2End-minE)
+			para1 = 1-(dis2End-minE)
 				/(E-minE)
 				/abs(n_lc);
 		}
 	}
+}
+
+//////////////////////////////////////////////////////////////////////////
+// the maximum acceptable deceleration in before lc cf is dependent on the desire
+// when the desire approaches one, the maximum deceleration approaches to the maximum deceleration
+//////////////////////////////////////////////////////////////////////////
+double myVehicleDef::getMaxDecInSync()
+{
+	return this->getMAXdec()*this->getLaneChangeDesire();
 }
 
 

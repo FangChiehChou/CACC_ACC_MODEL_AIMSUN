@@ -338,8 +338,14 @@ public:
 
 	double getDLCForbidZoneBeforeExit(){return dLC_forbidzone_before_exit_;};
 	void setDLCForbidZoneBeforeExit(double val){dLC_forbidzone_before_exit_=val;};
-	
-	double getDLCScanRange(){return dLC_scan_range_;};
+		
+	double getDLCScanRange()
+	{
+		double remain_length = 
+			AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).length-this->getPosition();
+		return dLC_scan_range_>remain_length-1?remain_length-1:dLC_scan_range_;
+	};
+
 	void setDLCScanRange(double val){dLC_scan_range_=val;};
 	int getDLCScanNoCars(){return dLC_scan_no_cars_;};
 	void setDLCScanNoCars(int val){dLC_scan_no_cars_=val;};
@@ -469,5 +475,6 @@ public:
 	double getMinE4OffRamp(){return getMinE4OnRamp();};
 	
 	void DesireEquation(double& para1, double& para2, double dis2End, double time2End, int n_lc, double minT, double minE, double T, double E);
+	double getMaxDecInSync();
 };
 #endif

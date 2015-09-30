@@ -38,7 +38,7 @@ std::map<int,int> orgin_section; // the section that connects the origin
 double global_acc = 0;
 double global_cacc = 0;
 int global_interval = 0; //minutes
-int interval_shift = 5;//in hours
+int interval_shift = 8;//in hours
 
 int dmd_modify(double T)
 {
@@ -634,7 +634,7 @@ double dmd_generate_section(double time,
 				}
 
 				int res = 
-					AKIPutVehTrafficFlow(id,k+1,AKIVehGetVehTypeInternalPosition(veh_type),0,0,turningid,false);				
+					AKIPutVehTrafficFlow(id,times.size()-k,AKIVehGetVehTypeInternalPosition(veh_type),0,0,turningid,false);				
 				
 				if(k==0)
 					k=0;
