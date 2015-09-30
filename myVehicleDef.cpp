@@ -1777,6 +1777,12 @@ void myVehicleDef::updateCoopCf()
 		}
 		nextPos = this->getPosition()+(v+this->getSpeed())*delta_t/2;
 	}
+	// no requester because
+	else if(this->getRemainLength() < 200)
+	{
+		double v = MAX(0,this->getSpeed()+delta_t*this->getMAXdec()*COMF_LEVEL);
+		nextPos = this->getPosition()+(v+this->getSpeed())*delta_t/2;
+	}
 	setNewPosition(nextPos, 
 		2*(nextPos - this->getPosition()) / delta_t-this->getSpeed());
 	
@@ -2452,7 +2458,8 @@ int myVehicleDef::NeedMCF()
 bool myVehicleDef::NeedCoop()
 {
 	// disable truck's cooperative driving behavior
-	if(this->getVehType() == Truck_Type)
+	if(this->getVehType() == Truck_Type
+		|| this->GetRampType(this->getIdCurrentSection()) == TRUE_ON_RAMP)
 		return false;
 
 	this->CoopRequester = NULL;
@@ -2504,7 +2511,25 @@ bool myVehicleDef::NeedCoop()
 		return true;
 	}
 	else
+	{
+		//CHECK IF THERE IS ANY CAR ON THE ACCELERATION LANE ON THE NEXT SECTION
+		/*if(this->CoopRequester == NULL
+			&& this->getIdCurrentLane() - 
+			AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).nbSideLanes == 1)
+		{
+			int leader_sec = this->getLeader()->getIdCurrentSection();
+			int sec_id = this->getIdCurrentSection();
+			if(this->getLeader() == NULL
+				|| leader_sec != sec_id ||leader->isFictitious())
+			{
+				if(this->getNoOfVehsOnNextOnRampAccLane())
+				{
+					return true;
+				}
+			}
+		}*/
 		return false;
+	}
 }
 
 // wiling2Coop defines if the driver is willing to cooperate given the 
@@ -3019,6 +3044,10 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 							  double v,double lead_v,double b_estimate,
 							  bool on_ramp, bool forward)
 {
+
+	if(x_leader - x - jamGap - l_leader <= 0)
+		return false;
+
 	double factor = 1;
 	if(on_ramp == true)
 	{
@@ -3041,6 +3070,41 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 
 	b_estimate = b_estimate*factor;
 
+	double minimun_time;
+	double minimun_gap;
+	double delta_v = lead_v-v;
+	double delta_a = b_estimate - maxDec;
+	double headway = x_leader - x;
+	double time2stationary = -lead_v/b_estimate;
+
+	minimun_time = MAX(0, -delta_v/delta_a);
+	if(delta_a >0 && time2stationary <= minimun_time)
+	{
+		minimun_gap = 
+					x_leader - x - l_leader + 
+					delta_v*minimun_time + 
+					0.5*delta_a*minimun_time*minimun_time;
+	}
+	else
+	{
+		//the time when the shortest gap occurs is either the time zero
+		//or the time when the follower stops
+		double time_follower_stop = -v/maxDec;
+		minimun_gap = 
+			headway - l_leader + 
+			MIN(0,
+			delta_v*time_follower_stop + 
+			0.5*delta_a*time_follower_stop*time_follower_stop
+			);
+	}
+	minimun_gap -= (v*(reaction_time+theta));
+
+	if(minimun_gap>0)
+		return true;
+	else
+		return false;
+
+	//places where the leader stops
 	double leader_stop_x 
 		= x_leader-pow(lead_v,2)/2/b_estimate;
 
@@ -3049,7 +3113,7 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 		= x-pow(v,2)/2/maxDec+v*(reaction_time+theta); 
 
 	double thrd = pow(lead_v,2)/2/b_estimate-pow(v,2)/2/maxDec+v*(reaction_time+theta)+l_leader+jamGap;
-
+	
 	/*if ((x_leader - x)>thrd*factor)
 	{
 		return true;
@@ -3233,6 +3297,8 @@ int myVehicleDef::GetOnAccLaneFlow(int next_sec)
 
 	return count;
 }
+
+
 
 //////////////////////////////////////////////////////////////////////////
 // Get vehicle equilibrium-position information given the leader info 
@@ -3472,6 +3538,23 @@ void myVehicleDef::DesireEquation(double& para1, double& para2, double dis2End,
 double myVehicleDef::getMaxDecInSync()
 {
 	return this->getMAXdec()*this->getLaneChangeDesire();
+}
+
+//////////////////////////////////////////////////////////////////////////
+// get number of vehicles on the acc lane on the next section
+//////////////////////////////////////////////////////////////////////////
+bool myVehicleDef::getNoOfVehsOnNextOnRampAccLane()
+{
+	int n_turnings = AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).nbTurnings;
+	for(int i=0; i<n_turnings;i++)
+	{
+		int aid = AKIInfNetGetIdSectionANGDestinationofTurning(this->getIdCurrentSection(),i);
+		if(GetRampType(aid) == ON_RAMP)
+		{
+			return GetOnAccLaneFlow(aid);
+		}
+	}
+	return false;
 }
 
 

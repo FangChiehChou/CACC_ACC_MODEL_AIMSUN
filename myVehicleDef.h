@@ -339,10 +339,14 @@ public:
 	double getDLCForbidZoneBeforeExit(){return dLC_forbidzone_before_exit_;};
 	void setDLCForbidZoneBeforeExit(double val){dLC_forbidzone_before_exit_=val;};
 		
+	double getRemainLength()
+	{
+		return AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).length-this->getPosition();
+	};
+
 	double getDLCScanRange()
 	{
-		double remain_length = 
-			AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).length-this->getPosition();
+		double remain_length = getRemainLength();
 		return dLC_scan_range_>remain_length-1?remain_length-1:dLC_scan_range_;
 	};
 
@@ -445,6 +449,7 @@ public:
 	int GetRampType(int sec_id);
 	int GetOnRampFlow(int next_sec, double *ramp_length);
 	int GetOnAccLaneFlow(int next_sec);
+	InfVeh GetOnAccLaneFlowInf(int next_sec);
 	double GetEquPosition(double leader_pos, double leader_l, double v);
 	void setNewArrivalAdjust(bool needadjust){this->new_need_adjust = needadjust;};
 	bool getNewArrivalAdjust(){return this->new_need_adjust;};
@@ -476,5 +481,6 @@ public:
 	
 	void DesireEquation(double& para1, double& para2, double dis2End, double time2End, int n_lc, double minT, double minE, double T, double E);
 	double getMaxDecInSync();
+	bool getNoOfVehsOnNextOnRampAccLane();
 };
 #endif
