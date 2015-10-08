@@ -386,7 +386,6 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 // Function: arrivalNewVehicle
 // Routine for processing a new , 
 // generate a new instance and assign characteristics
-//
 
 A2SimVehicle *mybehavioralModel::
 	arrivalNewVehicle( void *handlerVehicle,unsigned short idhandler, bool isFictitiousVeh)

@@ -38,7 +38,7 @@ std::map<int,int> orgin_section; // the section that connects the origin
 double global_acc = 0;
 double global_cacc = 0;
 int global_interval = 0; //minutes
-int interval_shift = 8;//in hours
+int interval_shift = 7;//in hours
 
 int dmd_modify(double T)
 {

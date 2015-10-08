@@ -283,6 +283,7 @@ public:
 	double desire_headway;
 	double friction_coeff;
 	int initial_leader_id;
+	int _ramp_lc_decision;
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -388,7 +389,7 @@ public:
 		double lead_v, double min_headway,
 		double Gap_AC_Thrd,
 		double desire, 
-		bool on_ramp, bool forward);
+		bool on_ramp, bool forward, double self_acc);
 	bool AccGapAccepted(double a_L, 
 		double a_U, double tau, double headway, 
 		double jamGap, double d_leader, double l_leader, double vf, 
@@ -409,7 +410,9 @@ public:
 		double theta, double x_leader,double x,
 		double jamGap, double l_leader, double v,
 		double lead_v,double b_estimate);
-	bool GippsGap(double maxDec,double reaction_time,double theta, double x_leader,double x,double jamGap, double l_leader, double v,double lead_v,double b_estimate, bool on_ramp, bool forward);
+	bool GippsGap(double maxDec,double reaction_time,double theta, 
+		double x_leader,double x,double jamGap, double l_leader, 
+		double v,double lead_v,double b_estimate, bool on_ramp, bool forward,double acc_self);
 	bool HwasooGap(double maxDec,double reaction_time,double theta, 
 		double x_leader,double x,double jamGap, double l_leader, double v,
 		double lead_v,double b_estimate);
@@ -482,5 +485,9 @@ public:
 	void DesireEquation(double& para1, double& para2, double dis2End, double time2End, int n_lc, double minT, double minE, double T, double E);
 	double getMaxDecInSync();
 	bool getNoOfVehsOnNextOnRampAccLane();
+	bool PreventSimutaneiousLC();
+	double AnticipatedAcc(double a_L, double a_U, double tau, double headway, double jamGap, double d_leader, double l_leader, double vf, double v, double x, double x_leader, double x_leader_steps_early, double lead_v, double min_headway, double Gap_AC_Thrd, double desire);
+	void setRampDecision(int ramp_lc_decision);
+	int getRampDecision();
 };
 #endif
