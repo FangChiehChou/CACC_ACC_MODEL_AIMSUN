@@ -17,8 +17,9 @@
 //#define CARveh  53
 //#define HOVveh  17859      
 //#define HIAveh  21350  // 811
-#define ACCveh  23053  // 812
-#define CACCveh 23057  // 813
+#define ACCveh  344  // 812
+#define CACCveh 346  // 813
+#define Truck_Type 56  // 813
 
 #define A_lim		1.0
 #define D_lim		2.0
@@ -41,6 +42,8 @@ private:
 	double jam_gap;
 	double E;
 	double T;
+	double min_E;
+	double min_T;
 	double distConflict;
 	int target_lane;
 	int RMode;  // Relaxation Mode 0: No relaxation, 1: relaxation 2: relaxation transition
@@ -89,7 +92,7 @@ public:
 	StaticInfVeh staticinfo;
 	InfVeh leader_info;
 	const A2SimVehicle* getLeader();
-	void RunNGSIM();
+	void RunNGSIM(bool mode_predetermined);
 	void RunACCCACC();
 	void UpdateVehicle(double simu_step);
 	bool ApplyNGSIMModel() ;
@@ -280,6 +283,7 @@ public:
 	double desire_headway;
 	double friction_coeff;
 	int initial_leader_id;
+	int _ramp_lc_decision;
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -335,8 +339,18 @@ public:
 
 	double getDLCForbidZoneBeforeExit(){return dLC_forbidzone_before_exit_;};
 	void setDLCForbidZoneBeforeExit(double val){dLC_forbidzone_before_exit_=val;};
-	
-	double getDLCScanRange(){return dLC_scan_range_;};
+		
+	double getRemainLength()
+	{
+		return AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).length-this->getPosition();
+	};
+
+	double getDLCScanRange()
+	{
+		double remain_length = getRemainLength();
+		return dLC_scan_range_>remain_length-1?remain_length-1:dLC_scan_range_;
+	};
+
 	void setDLCScanRange(double val){dLC_scan_range_=val;};
 	int getDLCScanNoCars(){return dLC_scan_no_cars_;};
 	void setDLCScanNoCars(int val){dLC_scan_no_cars_=val;};
@@ -375,7 +389,7 @@ public:
 		double lead_v, double min_headway,
 		double Gap_AC_Thrd,
 		double desire, 
-		bool on_ramp, bool forward);
+		bool on_ramp, bool forward, double self_acc);
 	bool AccGapAccepted(double a_L, 
 		double a_U, double tau, double headway, 
 		double jamGap, double d_leader, double l_leader, double vf, 
@@ -396,7 +410,9 @@ public:
 		double theta, double x_leader,double x,
 		double jamGap, double l_leader, double v,
 		double lead_v,double b_estimate);
-	bool GippsGap(double maxDec,double reaction_time,double theta, double x_leader,double x,double jamGap, double l_leader, double v,double lead_v,double b_estimate, bool on_ramp, bool forward);
+	bool GippsGap(double maxDec,double reaction_time,double theta, 
+		double x_leader,double x,double jamGap, double l_leader, 
+		double v,double lead_v,double b_estimate, bool on_ramp, bool forward,double acc_self);
 	bool HwasooGap(double maxDec,double reaction_time,double theta, 
 		double x_leader,double x,double jamGap, double l_leader, double v,
 		double lead_v,double b_estimate);
@@ -407,9 +423,9 @@ public:
 	void BeforeExitorTurningLcSlowDown();
 	double PosCf2EndofExitTurning();
 	void setOffRampE(double val){this->off_ramp_e = val;};
-	double getOffRampE(){return this->off_ramp_e;};
+	double getE4OffRamp(){return this->off_ramp_e;};
 	void setOffRampT(double val){this->off_ramp_t = val;};
-	double getOffRampT(){return this->off_ramp_t;};
+	double getT4OffRamp(){return this->off_ramp_t;};
 	double GetAdditionalDlcDesire(int target_lane);
 	double Bound_Function(double param1);
 	double getPenaltyDLCNoExitLane(){return penalty_dlc_no_exitlane;};
@@ -436,6 +452,7 @@ public:
 	int GetRampType(int sec_id);
 	int GetOnRampFlow(int next_sec, double *ramp_length);
 	int GetOnAccLaneFlow(int next_sec);
+	InfVeh GetOnAccLaneFlowInf(int next_sec);
 	double GetEquPosition(double leader_pos, double leader_l, double v);
 	void setNewArrivalAdjust(bool needadjust){this->new_need_adjust = needadjust;};
 	bool getNewArrivalAdjust(){return this->new_need_adjust;};
@@ -454,5 +471,23 @@ public:
 	bool isLaneChangingPossible(int target_lane);
 	void setInitialLeaderId(int id);
 	int getInitialLeaderId(){return this->initial_leader_id;};
+	int determineDrivingModeACC();
+	int getNextSectionRampType(int& next_sec_center_lanes);
+
+	double getE4OnRamp(){return E>getMinE4OnRamp()?E:getMinE4OnRamp();};
+	double getMinE4OnRamp(){return min_E<50?50:min_E;};
+	double getT4OnRamp(){return T>getMinT4OnRamp()?T:getMinT4OnRamp();};
+	double getMinT4OnRamp(){return min_T<10?10:min_T;};
+
+	double getMinT4OffRamp(){return getMinT4OnRamp();};
+	double getMinE4OffRamp(){return getMinE4OnRamp();};
+	
+	void DesireEquation(double& para1, double& para2, double dis2End, double time2End, int n_lc, double minT, double minE, double T, double E);
+	double getMaxDecInSync();
+	bool getNoOfVehsOnNextOnRampAccLane();
+	bool PreventSimutaneiousLC();
+	double AnticipatedAcc(double a_L, double a_U, double tau, double headway, double jamGap, double d_leader, double l_leader, double vf, double v, double x, double x_leader, double x_leader_steps_early, double lead_v, double min_headway, double Gap_AC_Thrd, double desire);
+	void setRampDecision(int ramp_lc_decision);
+	int getRampDecision();
 };
 #endif

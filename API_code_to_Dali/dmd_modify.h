@@ -11,12 +11,17 @@
 #include <vector>
 #include <numeric>
 #include <map>
+#include <fstream>      // std::ifstream
+#include <algorithm>    // std::find
+#include <string>
 
 #define Car_Type  53  
 #define HOVveh_Type  17859
 #define HIAveh_Type  21350  // 811
-#define ACCveh_Type  23053  // 812
-#define CACCveh_Type 23057  // 813
+#define Truck_Type  56  
+
+#define ACCveh_Type  344  // 812
+#define CACCveh_Type 346  // 813
 #define RAMP_ID 23554
 #define MAINLANE 23552
 #define ACC_LENGTH 820 //in feet
@@ -25,10 +30,15 @@
 std::map<int,std::vector<int>> time_next; //the time for the next vehicle from an origin 
 std::map<int,std::vector<double>> avg_headway_origin;
 std::map<int,std::vector<double>> min_headway_origin;
+std::map<int,std::vector<std::vector<double>>> flows;
+std::map<int,std::vector<std::vector<double>>> truck_portions;
+std::map<int,std::vector<double>> turning_portions; //turning proportions
 std::map<int,std::map<int, double>> dest; // the dest of a origin and its flow proportion
 std::map<int,int> orgin_section; // the section that connects the origin
 double global_acc = 0;
 double global_cacc = 0;
+int global_interval = 0; //minutes
+int interval_shift = 7;//in hours
 
 int dmd_modify(double T)
 {
@@ -102,10 +112,8 @@ int dmd_modify(double T)
 				}
 			} //j-loop end
 	} //i-loop end
-	
 
 	return 1;
-
 }
 
 void read_precentage(double &acc_percent, double &cacc_percent)
@@ -539,6 +547,7 @@ void ModifyMatrixDemand(double acc_percent, double cacc_percent)
 	}
 }
 
+
 //////////////////////////////////////////////////////////////////////////
 // generate a random exponential distributed variable
 //////////////////////////////////////////////////////////////////////////
@@ -561,6 +570,91 @@ double RandomExpHeadway(double min_hwy, double avg_hwy)
 double round(double x)
 {
 	return floor(x+0.5);
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Generate vehicles on original sections
+//////////////////////////////////////////////////////////////////////////
+double dmd_generate_section(double time, 
+							double timeSta, 
+							double timTrans, 
+							double acicle)
+{
+
+	//get simulation steps
+	int current_step =(int)(round(time/acicle));
+
+	// according to the current time, determine the truck percentage
+	int time_index = (int)(time/60.0)/global_interval+interval_shift*60/global_interval;	
+
+	// iterate of vector
+	// this size of the time next is the number of origins
+	typedef std::map<int, std::vector<int>>::iterator it_type;
+	for(it_type iterator = time_next.begin(); iterator != time_next.end(); iterator++) 
+	{
+		//section id
+		int id = iterator->first;
+		std::vector<int> times = time_next[id];
+		//the lane id in pmes is the opposite of the aimsun
+		//call in reverse order
+		for(int k=0;k<times.size();k++)
+		{
+			//next_time at lane k
+			int next_time = times.at(k);
+			double truck_percentage = truck_portions[id][time_index][k];
+			if( next_time == current_step)
+			{
+				//generate a new vehicle here
+				//first determine its destination
+				double rand_num = AKIGetRandomNumber();
+				int veh_type = 0;
+				if(rand_num < ACC_percent)
+					veh_type = ACCveh_Type;
+				else if(rand_num < ACC_percent+
+					CACC_percent)
+					veh_type = CACCveh_Type;
+				else if(rand_num < ACC_percent + CACC_percent + truck_percentage)
+					veh_type = Truck_Type;
+				else
+					veh_type = Car_Type;
+
+				int turningsection = 0;
+				rand_num = AKIGetRandomNumber();
+				double prob=0;
+				int turningid = 0;
+				for(int i=0; i<turning_portions[id].size(); i++)
+				{
+					prob += turning_portions[id][i];
+					if(rand_num < prob)
+					{
+						turningsection = i;
+						turningid = AKIInfNetGetIdSectionANGDestinationofTurning(id, turningsection);
+						break;
+					}
+				}
+
+				int res = 
+					AKIPutVehTrafficFlow(id,times.size()-k,AKIVehGetVehTypeInternalPosition(veh_type),0,0,turningid,false);				
+				
+				if(k==0)
+					k=0;
+
+				//randomly generate the next time and replace
+				//with the value in vector
+				
+				double avg_headway_flow = global_interval*60.0;
+				if(flows[id][time_index][k] > 0)				
+				{
+					avg_headway_flow = min(avg_headway_flow,
+						3600.0/(((double)flows[id][time_index][k])/(double)global_interval*60.0));
+				}
+				int new_time = (int)(RandomExpHeadway(1, avg_headway_flow)/acicle);
+				time_next[id][k] = new_time+current_step;
+			}
+			
+		}
+	}
+	return 0;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -613,6 +707,7 @@ int dmd_generate_matrix(double time,
 										veh_type = CACCveh_Type;
 									else
 										veh_type = Car_Type;
+
 									//put a car on the section
 									if(AKIPutVehTrafficOD
 											(orgin_section[origin], k+1, 
@@ -695,6 +790,238 @@ int dmd_modify_cacc(double ACC_percent, double CACC_percent, double ramp_demand,
 
 }
 
+int read_pems_flow()
+{
+	//get the origin sections of the network
+	int num_sec = AKIInfNetNbSectionsANG();
+	std::map<int,A2KSectionInf> hashmap;
+	std::vector<int> set;
+	for(int i=0; i<num_sec; i++)
+	{
+		int id = AKIInfNetGetSectionANGId(i);
+		A2KSectionInf inf = AKIInfNetGetSectionANGInf(id);
+		hashmap.insert(std::pair<int,A2KSectionInf>(id, inf));
+		for(int j=0; j<inf.nbTurnings; j++)
+		{
+			int next
+				= AKIInfNetGetIdSectionANGDestinationofTurning(id, j);
+			if(find (set.begin(), set.end(), next) ==set.end())
+				set.push_back(next);		
+		}
+	}
+	global_interval = 0; //minutes
+	//for each source, we read its input flows
+	for(int i=0; i<num_sec; i++)
+	{
+		int id = AKIInfNetGetSectionANGId(i);
+		if(find(set.begin(), set.end(), id)
+			!= set.end())
+		{
+			continue;;
+		}
+		//select the file
+		std::string filename = "C:\\CACC_Simu_Data\\flows\\";
+		char buffer[10];
+		std::sprintf(buffer, "%d", id);
+
+		filename += (std::string(buffer)
+			+std::string(".txt"));
+		std::ifstream myfile (filename.c_str());
+		int line_id = 0;
+		std::string delimiter = " ";
+		if (myfile.is_open())
+		{
+			int num_lanes = 0;
+			int cols = 1;
+			std::string line;
+			std::vector<std::vector<double>> flow_interval;
+			while ( getline (myfile,line))
+			{
+				if(line_id == 0)
+				{
+					int index = line.find(delimiter);
+					std::string str_interval = line.substr(0, index);
+					int interval = atoi( str_interval.c_str());
+					if(global_interval == 0)
+						global_interval = interval;
+					else if(global_interval!=interval)
+						return 0;
+					while(line.find(delimiter) != std::string::npos)
+					{
+						cols++;
+						line = line.substr(line.find(delimiter)+1,
+							line.length() - line.find(delimiter)-1);
+					}
+					num_lanes = (cols-7)/4;
+					if(num_lanes != hashmap[id].nbCentralLanes)
+					{
+						return 0;
+					}
+				}
+				else
+				{
+					std::vector<double> laneflow;
+					//read a line of flow
+					//the last three columns is not lane-based flow
+					//skip th first two cols
+					int index = line.find_first_of((char)(9));
+					line = line.substr(index+1, line.length()
+						-index-1);
+					for(int k=0;k<num_lanes;k++)
+					{
+						index = line.find_first_of((char)(9));
+						double tempflow = atof((line.substr(0,index)).c_str());
+						laneflow.push_back(tempflow);
+						line = line.substr(index+1, line.length()
+							-index-1);
+					}
+					flow_interval.push_back(laneflow);										
+				}
+				line_id++;
+			}
+			flows.insert
+				(std::pair
+				<int,std::vector<std::vector<double>>>(id, flow_interval));
+			myfile.close();
+		}
+	}
+
+	return 1;
+}
+
+int read_pems_truck_percentage()
+{
+	//based on the flow initialize the truck percentage as zero
+	typedef std::map<int, std::vector<std::vector<double>>>::iterator it_type;
+	for(it_type iterator = flows.begin(); iterator != flows.end(); iterator++) 
+	{
+		std::vector<std::vector<double>> truck_percent;
+		for(int j=0; j<flows[iterator->first].size(); j++)
+		{
+			std::vector<double> temptruck;
+			for(int k=0; k<flows[iterator->first].at(j).size(); k++)
+			{
+				temptruck.push_back(0);
+			}
+			truck_percent.push_back(temptruck);
+		}
+		int id = iterator->first;
+		truck_portions.insert(std::pair<int, std::vector<std::vector<double>>>(id, truck_percent));
+
+		//select the file
+		std::string filename = "C:\\CACC_Simu_Data\\flows\\";
+		char buffer[10];
+		std::sprintf(buffer, "%d", id);
+
+		filename += (std::string(buffer)
+			+std::string("-truck.txt"));
+		std::ifstream myfile (filename.c_str());
+		int line_id = 0;
+		std::string delimiter = " ";
+		if (myfile.is_open())
+		{
+			int num_lanes = 0;
+			int cols = 1;
+			std::string line;
+			while ( getline (myfile,line))
+			{
+				if(line_id == 0)
+				{
+					
+				}
+				else
+				{
+					if(line_id > truck_portions[id].size())
+						return -1;
+					//read a line of flow
+					//the last three columns is not lane-based flow
+					//skip th first two cols
+					int index = line.find_first_of((char)(9));
+					line = line.substr(index+1, line.length()
+						-index-1);
+					for(int k=0;k<truck_portions[id][line_id-1].size();k++)
+					{
+						index = line.find_first_of((char)(9)); //tab's ascii is 9
+						double tempflow = atof((line.substr(0,index)).c_str());
+						if(k >= truck_portions[id][line_id-1].size())
+							return -1;
+						truck_portions[id][line_id-1][k] = tempflow*0.01;
+						line = line.substr(index+1, line.length()
+							-index-1);
+					}									
+				}
+				line_id++;
+			}
+			myfile.close();
+		}
+	}
+
+	return 1;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Initialize the next time vector
+//////////////////////////////////////////////////////////////////////////
+int create_nexttime()
+{
+	typedef std::map<int, std::vector<std::vector<double>>>::iterator it_type;
+	for(it_type iterator = flows.begin(); iterator != flows.end(); iterator++) 
+	{
+		int id = iterator->first;
+		std::vector<int> temp;
+		for(int j=0;j<iterator->second.size();j++)
+		{
+			for(int k=0;k<iterator->second[j].size(); k++)
+			{
+				temp.push_back(0);
+			}
+			time_next.insert(std::pair<int,std::vector<int>>(id, temp));
+			break;
+		}
+	}
+	return 1;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// read turning proportions
+//////////////////////////////////////////////////////////////////////////
+int read_turnings()
+{
+	typedef std::map<int, std::vector<std::vector<double>>>::iterator it_type;
+	for(it_type iterator = flows.begin(); iterator != flows.end(); iterator++) 
+	{
+		int id = iterator->first;
+		A2KSectionInf sec_info = 
+			AKIInfNetGetSectionANGInf(id);
+		std::vector<double> temp;
+		for(int k=0; k<sec_info.nbTurnings;k++)
+			temp.push_back(1.0);
+		
+		turning_portions.insert(std::pair<int, std::vector<double>>(id, temp));
+	}
+	return 1;
+}
+
+// this method read pmes direct txt data output and insert 
+// traffic states based on that file. an example data file is:
+// 5 Minutes	Lane 1 Flow (Veh/5 Minutes)	Lane 2 Flow (Veh/5 Minutes)	Lane 3 Flow (Veh/5 Minutes)	Lane 4 Flow (Veh/5 Minutes)	Lane 5 Flow (Veh/5 Minutes)	Flow (Veh/5 Minutes)	# Lane Points	% Observed
+// 09/03/2015 00:00	31	33	25	56	8	153	5	80
+// 09/03/2015 00:05	35	46	32	57	6	176	5	80
+// 09/03/2015 00:10	26	29	25	68	5	153	5	80
+// 09/03/2015 00:15	20	35	36	28	5	124	5	80
+// 09/03/2015 00:20	24	34	33	29	5	125	5	80
+// each line will be used to create a state
+// each source section will need to have a file
+int dmd_create_pems(double ACC_percent, double CACC_percent)
+{
+	if(read_pems_flow() == 1)
+		if(read_pems_truck_percentage()==1)
+		{
+			if(read_turnings() == 1)
+				if(create_nexttime() == 1)
+					return 1;
+		}
+}
 
 
 //in this method, we generate linearly increasing demands for mainlane traffic from 1000 vph 

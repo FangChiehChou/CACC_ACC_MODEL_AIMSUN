@@ -54,7 +54,7 @@
 #define RAMP_SPEED 25
 #define CREEP_SPEED 20
 
-#define COMF_LEVEL 0.5 //the comfortable level of deceleration
+#define COMF_LEVEL 0.8 //the comfortable level of deceleration
 #define ACCEPT_LEVEL 0.9 //the accepted level of deceleration for on-ramp sync
 #define DANGER_GAP 0.8
 #define MIN_REGAIN_AUTO_SPEED 5
@@ -69,7 +69,7 @@
 #define NO_RAMP 0
 
 #define ACC_LANE_LENGTH 250 //Length of on-ramp acceleration lane[m]
-#define FORBID_RAMPCHANGE_ZONE 50 //Length of on-ramp acceleration lane[m]
+#define FORBID_RAMPCHANGE_ZONE 0 //Length of on-ramp acceleration lane[m]
 
 double bound(double x,double x_high,double x_low)
 {
@@ -107,6 +107,40 @@ void myVehicleDef::updateRegularCf()
 	x=getPosition(0);
 	x_CF=PosCf(leader);
 	setNewPosition(x_CF, 2*(x_CF - x) / delta_t-this->getSpeed());
+}
+
+//determine the current mode based on the mode from the last step
+//this is used for ACC or CACC vehicles
+int myVehicleDef::determineDrivingModeACC()
+{
+	int currentMode = getMode();
+
+	//do not do any lane changes on node
+	if(this->isCurrentLaneNode() == true)
+	{
+		switch (currentMode)
+		{
+			case BCF:
+				return setMode(CF);
+			default:
+				return getMode();
+		}
+	}
+	switch (currentMode)
+	{
+		case CF:
+			return DetermineLcOrMergeOrCoop(); //decide if lane change /merge /cooperation is needed
+		case  ACF:
+			return Determine2ndLcAfterLc(); //decide if another lane change follows this lane change
+		case CCF:
+			return determineCoopOrLc(); //see if it is willing to yield or itself needs a change
+		case RCF:
+			return DetermineReceiveOrLcOrCoop(); //see if it is needs a change or Coop or doing RCF
+		case BCF:
+			return determineGapOrGiveup();
+		default:
+			return currentMode;
+	}
 }
 
 //determine the current mode based on the mode from the last step
@@ -151,7 +185,7 @@ int myVehicleDef::determineDrivingMode()
 		case RCF:
 			return DetermineReceiveOrLcOrCoop(); //see if it is needs a change or Coop or doing RCF
 		case BCF:
-			return determineGapOrGiveup();
+			return determineGapOrGiveup(); // see if it needs a Coop
 		default:
 			return currentMode;
 	}
@@ -159,11 +193,15 @@ int myVehicleDef::determineDrivingMode()
 
 //run Yeo Model
 // each update function must do three things:
-// calculate the next position, call setnewposition, and set the mode for the next step
-void myVehicleDef::RunNGSIM()
-{              
-	
-	switch(determineDrivingMode())
+// calculate the next position, call set newposition, and set the mode for the next step
+void myVehicleDef::RunNGSIM(bool mode_predetermined)
+{ 	
+	int mode = 0;
+	if(mode_predetermined == true)
+		mode = getMode();
+	else
+		mode = determineDrivingMode();
+	switch(mode)
 	{
 		case CF:                          
 			updateRegularCf();
@@ -206,10 +244,7 @@ bool myVehicleDef::ApplyNGSIMModel()
 	A2KSectionInf sectioninfo = AKIInfNetGetSectionANGInf(sectionid);  
 	if (getapplyACC() == false //this is not a cacc or acc vehicle
 		||isCurrentLaneOnRamp() //this vehicle is on ramp
-		||(getIdCurrentLane() == 1 && sectioninfo.nbSideLanes >=1
-		|| this->getIdCurrentSection() == FeederOnRamp
-		|| this->getMode() == ACF
-		|| this->source_section == FeederOnRamp) //this vehicle is on ramp
+		|| this->getIdCurrentSection() == FeederOnRamp //this vehicle is on ramp
 		)
 	{
 		return true;
@@ -241,7 +276,7 @@ void myVehicleDef::UpdateVehicle(double simu_step)
 
 	if(this->ApplyNGSIMModel())
 	{
-		RunNGSIM();
+		RunNGSIM(false);
 	}
 	//ACC and CACC behavior
 	//they are only applied to these vehicles without lane-changing intent
@@ -278,8 +313,12 @@ bool myVehicleDef::LetAimsunHandle()
 
 void myVehicleDef::RunACCCACC()
 {
-	if (VehID == this->getDebugTrackID())
-		VehID = VehID;
+	//use manual driving modal for 
+	if(determineDrivingModeACC() != CF)
+	{
+		this->RunNGSIM(true);
+		return;
+	}
 
 	//***********collect and record basic information
 	double	x_CF=0.0;
@@ -345,28 +384,24 @@ void myVehicleDef::RunACCCACC()
 			x_leader	= leader->getPosition(1); 
 			v_1_leader	=leader->getSpeed(2);
 			x_1_leader	=leader->getPosition(2); 
-			v_2_leader	=leader->getSpeed(3);
-			x_2_leader	=leader->getPosition(3); 
 		}
 		else
 		{
 			v_leader = leader->getSpeed(0); 
 			x_leader = leader->getPosition(0); 
 			v_1_leader = leader->getSpeed(1);
-			x_1_leader = leader->getPosition(1); 			
-			v_2_leader = leader->getSpeed(2);
-			x_2_leader = leader->getPosition(2); 
+			x_1_leader = leader->getPosition(1); 	
 		}
 
 		a_L_leader  = getMAXdec();
 		l_leader=leader->getLength();
 		gap=headway-l_leader;
 
-		if(ResumeMannual() == true)
+		/*if(ResumeMannual() == true)
 		{
-			RunNGSIM();
+			RunNGSIM(true);
 			return;
-		}
+		}*/
 
 		d_leader = -(v_leader * v_leader) / (2*a_L_leader);
 
@@ -649,9 +684,30 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 					Gap_AC_Thrd,
 					desire,
 					isCurrentLaneOnRamp(),
-					true) == false)
+					true,acc_self) == false)
 				{
 					Ok_downstream_gap = false;
+				}
+				else
+				{
+					acc_self = AnticipatedAcc(
+						getMAXdec(), 
+						getMAXacc(), 
+						tau*beta, 
+						headway, 
+						this->alpha*getJamGap(), 
+						d_leader, 
+						((myVehicleDef *)vehDown)->getLength(), 
+						getFreeFlowSpeed(), 
+						getSpeed(), 
+						getPosition(),
+						current_pos_down,
+						past_pos_down,
+						((myVehicleDef *)vehDown)->getSpeed(), 
+						min_headway,
+						Gap_AC_Thrd,
+						desire
+						); // get the acceleration of the current vehicle
 				}
 			}
 		}
@@ -748,9 +804,10 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 					Gap_AC_Thrd,
 					desire,
 					isCurrentLaneOnRamp(),
-					false) == false)
+					false,
+					acc_self) == false)
 				{
-					Ok_downstream_gap = false;
+					Ok_upstream_gap = false;
 				}
 			}
 		}
@@ -1305,14 +1362,15 @@ double myVehicleDef::PosCf(const A2SimVehicle* leader)
 //using a weight coefficient
 bool myVehicleDef::NeedLC()
 {
-
 	ResetDesires();
+	if(this->GetRampType(this->getIdCurrentSection()) == TRUE_ON_RAMP)
+		return CombineLCDesires();
 	//discretionary 
 	NeedDlc();
 	//mandatory options are exclusive
 	if(NeedRampLc()==false)
-		if(NeedLc4Turning()==false)
-			NeedLcExit();
+		if(NeedLc4Turning()==false){}
+			//NeedLcExit();
 	//combine all options
 	//within combine desires, we set lc type
 	return CombineLCDesires();
@@ -1653,6 +1711,14 @@ void myVehicleDef::UpdateBeforeLaneChangeCf()
 	{
 		//vehicles choose to sync with the leader on the target lane or slow to skip this gap
 		int decision = DLCCFDecision(); //get CF options before lane changing
+		if(decision != DLC_LANE_CHANGE_FEASIBLE)
+		{
+			if(NeedCoop() == true)
+			{
+				this->updateCoopCf();
+				return;
+			}
+		}
 		if(decision == DLC_DECISION_SLOW_DOWN)
 		{
 			this->BeforeDLcSlowDown();
@@ -1670,6 +1736,7 @@ void myVehicleDef::UpdateBeforeLaneChangeCf()
 	{
 		//vehicles choose to sync with the leader on the target lane or slow to skip this gap
 		int ramp_lc_decision = RampCfDecision();
+		this->setRampDecision(ramp_lc_decision);
 		if(ramp_lc_decision == RAMP_DECISION_SLOW_DOWN)
 		{
 			this->BeforeOnRampLcSlowDown();
@@ -1678,14 +1745,13 @@ void myVehicleDef::UpdateBeforeLaneChangeCf()
 		{
 			this->BeforeOnRampLcSync();
 		}
-		else if(ramp_lc_decision == RAMP_DECISION_NORMAL_FOLLOW)
+		else if(ramp_lc_decision == RAMP_DECISION_NORMAL_FOLLOW
+			|| PreventSimutaneiousLC() == true)
 		{
 			this->updateRegularCf();
 		}
 		else
-		{
 			this->UpdateLc();
-		}
 	}
 }
 
@@ -1739,6 +1805,12 @@ void myVehicleDef::updateCoopCf()
 		{
 			v = MAX(0,this->getSpeed()+delta_t*acc);
 		}
+		nextPos = this->getPosition()+(v+this->getSpeed())*delta_t/2;
+	}
+	// no requester because
+	else if(this->getRemainLength() < 200)
+	{
+		double v = MAX(0,this->getSpeed()+delta_t*this->getMAXdec()*COMF_LEVEL);
 		nextPos = this->getPosition()+(v+this->getSpeed())*delta_t/2;
 	}
 	setNewPosition(nextPos, 
@@ -1912,6 +1984,12 @@ void myVehicleDef::BeforeOnRampLcSync()
 	getUpDown((const A2SimVehicle *&)vehUp, 
 		(const A2SimVehicle *&)vehDown, this->getTargetLane(), 0);
 	double x_CF_Sync = PosCf(vehDown, 1, beta, alpha, Relaxation);
+
+	double max_accept_dec = getMaxDecInSync();//maximum acceptable deceleration at the current desire level
+	double speed = this->getSpeed()+max_accept_dec*delta_t;
+	double x_CF_Sync_Limit = this->getPosition() + (this->getSpeed()+speed)*delta_t/2; //position based on this most acceptable deceleration
+	x_CF_Sync = MAX(x_CF_Sync, x_CF_Sync_Limit);
+
 	double x_CF_NoSync = 0;
 	if(this->leader == NULL)
 	{
@@ -1922,13 +2000,14 @@ void myVehicleDef::BeforeOnRampLcSync()
 		x_CF_NoSync = PosCf(this->leader,1,beta,alpha, Relaxation);
 	}
 	double x=getPosition(0);
-
-	double sync_v = (x_CF_Sync - x) / delta_t*2-this->getSpeed();
+	
+	/*double sync_v = (x_CF_Sync - x) / delta_t*2-this->getSpeed();
 	if ((sync_v-this->getSpeed())/delta_t < ACCEPT_LEVEL*this->getMAXdec())
 	{
 		sync_v = this->getSpeed()+COMF_LEVEL*this->getMAXdec()*delta_t;
 		x_CF_Sync = x+(this->getSpeed()+sync_v)/2*delta_t;
-	}
+	}*/
+
 	setNewPosition(MIN(x_CF_NoSync,x_CF_Sync),
 			(MIN(x_CF_NoSync,x_CF_Sync) - x) / delta_t*2-this->getSpeed());
 }
@@ -1968,6 +2047,7 @@ void myVehicleDef::BeforeExitorTurningLcSync()
 	getUpDown((const A2SimVehicle *&)vehUp, 
 		(const A2SimVehicle *&)vehDown, this->getTargetLane(), 0);
 	double x_CF_Sync = PosCf(vehDown, 1, beta, alpha, Relaxation);
+
 	//the current leader
 	double x_CF_NoSync = 0;	
 	double posFollowEnd = PosCf2EndofExitTurning();
@@ -2063,6 +2143,32 @@ bool myVehicleDef::NeedRampLc()
 		this->setMandatoryType(RAMP);
 		return true;
 	}
+	else // to see if the connecting lane on the next section is also a on-ramp
+	{
+		int next_sec_center_lanes = 0;
+		if(getNextSectionRampType(next_sec_center_lanes) != ON_RAMP)
+		{
+			return false;
+		}
+		else
+		{
+			// the current lane is at the rightmost lane except the side lanes
+			// and the lane difference between the two sections 
+			if ((this->getIdCurrentLane() - sectionInfo.nbSideLanes <= 1)
+				&&
+				sectionInfo.nbCentralLanes 
+				> next_sec_center_lanes)
+			{	
+				double incentive = 
+					CalculateDesireForce(1, this->getPositionNextTurning()-this->getPosition()+ACC_LANE_LENGTH,
+					this->getSpeed(),true);
+
+				this->setLaneChangeDesireForce(incentive, 0);
+				this->setMandatoryType(RAMP);
+				return true;
+			}
+		}
+	}
 	
 	return false;
 }
@@ -2086,6 +2192,10 @@ bool myVehicleDef::NeedDlc()
 {
 	//if(getLCTime()<=20) return false;
 
+	//disable truck's discretionary lane changing desire
+	if(this->getVehType() == Truck_Type)
+		return false;
+
     int target_lane = 0;
     double vf= 0.0;
     double lc_prob=0.0;
@@ -2101,12 +2211,21 @@ bool myVehicleDef::NeedDlc()
 
 	//int ind_lc = 0;	//index for LC (0: no LC, 1: left LC, -1:right LC)
 	
+	//d_scan cannot be larger than the section length
+
     vf= getFreeFlowSpeed();
     v_left = isLaneChangingPossible(1) ?
         getAverageSpeedAHead(1, d_scan, n_scan) : 0;
     v_ahead = getAverageSpeedAHead(0, d_scan, n_scan);
     v_right = isLaneChangingPossible(-1) ?
         getAverageSpeedAHead(-1, d_scan, n_scan) : 0;
+	
+	int sec_id = getIdCurrentSection();
+	A2KSectionInf inf = AKIInfNetGetSectionANGInf(sec_id);
+	if(this->getIdCurrentLane() - inf.nbSideLanes == 1)
+	{
+		v_right = 0;
+	}
 
 	if(VehID == this->getDebugTrackID())
 		VehID = VehID;
@@ -2135,9 +2254,11 @@ bool myVehicleDef::NeedDlc()
 		//MyPrintString("Try to left LC (%i)", getId());
 		//ind_lc = 1;
 		//lc_prob = (v_left - v_ahead) * delta_t / (vf * phi);
-		lc_prob = (v_left - v_ahead) / (vf)
+		lc_prob = (v_left - v_ahead) / (vf);
 			//*OnRampAddCoef()/** delta_t*/ 
-			;
+	
+		//lc_prob = (1/v_ahead - 1/v_left)/(1/vf); //the time save  per unit (m)
+
 
 		/*if (mybehavioralModel::sampleUniformDist() < lc_prob)
         {*/
@@ -2156,6 +2277,8 @@ bool myVehicleDef::NeedDlc()
 		//lc_prob_right = (v_right - v_ahead) * delta_t / (vf * phi);
 		lc_prob_right = 
 			(v_right - v_ahead) / vf*this->getRightDLCCoeff()/** delta_t*/;
+
+		//lc_prob_right = (1/v_ahead - 1/v_right)/(1/vf)*this->getRightDLCCoeff();
 
 		/*if (mybehavioralModel::sampleUniformDist() < lc_prob)
         {*/
@@ -2198,11 +2321,11 @@ bool myVehicleDef::NeedDlc()
 		getIdTargetLanes4NextTurning(0, exit_lane_from, exit_lane_to);
 		int curLane = getIdCurrentLane();
 
-		double d_exit = getPositionNextTurning() - getPosition(0);
+		/*double d_exit = getPositionNextTurning() - getPosition(0);
 		if (d_exit < this->getDLCForbidZoneBeforeExit())
 		{
 			goto NO_LANE_CHANGE;
-		}
+		}*/
 
 		if (curLane + getTargetLane() < exit_lane_from 
 			|| curLane + getTargetLane() > exit_lane_to) 
@@ -2214,9 +2337,12 @@ bool myVehicleDef::NeedDlc()
 		//DLC is also not allowed 
 		//when the vehicle is at the original section
 		//with the same zone distance
-		if(this->getIdCurrentSection() ==
-			this->getSourceSection()&&
-			this->getPosition()<this->getDLCForbidZoneBeforeExit())
+		if(
+			this->getIdCurrentSection() ==
+			this->getSourceSection()
+			/*&&
+			this->getPosition()<this->getDLCForbidZoneBeforeExit()*/
+			)
 		{
 			goto NO_LANE_CHANGE;
 		}
@@ -2306,7 +2432,7 @@ bool myVehicleDef::NeedLc4Turning()
 	int n_lc=0;  // number of lane changes required to have turning
 	int lane = 0;
 	int conflictLane=0;
-	int index = 0;
+	int index = 2;
 	int exit_lane_from=0;
 	int exit_lane_to=0;	
 	double d_exit =0.0;
@@ -2314,7 +2440,7 @@ bool myVehicleDef::NeedLc4Turning()
 
 	lane = getIdCurrentLane();
 	conflictLane = GetConflictLane(this);
-	getIdTargetLanes4NextTurning(index, exit_lane_from, exit_lane_to);
+	getIdTargetLanes4NextTurning(0, exit_lane_from, exit_lane_to);
 
 	// check if left lane changing is needed
 	if (lane < exit_lane_from)
@@ -2371,6 +2497,12 @@ int myVehicleDef::NeedMCF()
 //see if the other vehicles need cooperation
 bool myVehicleDef::NeedCoop()
 {
+	// disable truck's cooperative driving behavior
+	if(this->getVehType() == Truck_Type
+		//|| this->GetRampType(this->getIdCurrentSection()) == TRUE_ON_RAMP
+		)
+		return false;
+
 	this->CoopRequester = NULL;
 	//if both lanes have cooperation requesters
 	//select the one that is the closest
@@ -2378,37 +2510,47 @@ bool myVehicleDef::NeedCoop()
 	A2SimVehicle *vehDown=NULL;	
 	getUpDown((const A2SimVehicle *&)vehUp, 
 		(const A2SimVehicle *&)vehDown, LEFT, 0);
-	if(vehDown!=NULL
-		&& ((myVehicleDef*)vehDown)->getMode() == BCF
-		&& ((myVehicleDef*)vehDown)->getTargetLane() == RIGHT)
+	if (this->getLastLCTarget() != RIGHT)
 	{
-		if(this->Willing2Coop(((myVehicleDef*)vehDown)))
+		if(vehDown!=NULL
+			&& ((myVehicleDef*)vehDown)->getMode() == BCF
+			&& ((myVehicleDef*)vehDown)->getTargetLane() == RIGHT
+			//&& ((myVehicleDef*)vehDown)->getLCType() != OPTIONAL
+			) // only cooperate to mandatory
 		{
-			this->CoopRequester = (myVehicleDef*)vehDown;
+			if(this->Willing2Coop(((myVehicleDef*)vehDown)))
+			{
+				this->CoopRequester = (myVehicleDef*)vehDown;
+			}
 		}
 	}
 
-	getUpDown((const A2SimVehicle *&)vehUp, 
-		(const A2SimVehicle *&)vehDown, RIGHT, 0);
-	if(vehDown!=NULL
-		&& ((myVehicleDef*)vehDown)->getMode() == BCF
-		&& ((myVehicleDef*)vehDown)->getTargetLane() == LEFT)
+	if(this->getLastLCTarget() != LEFT)
 	{
-		//find the leader 
-		double dis = ((myVehicleDef*)vehDown)->getPositionReferenceVeh
-			(this);
-		if(this->Willing2Coop( (myVehicleDef*)vehDown))
+		getUpDown((const A2SimVehicle *&)vehUp, 
+			(const A2SimVehicle *&)vehDown, RIGHT, 0);
+		if(vehDown!=NULL
+			&& ((myVehicleDef*)vehDown)->getMode() == BCF
+			&& ((myVehicleDef*)vehDown)->getTargetLane() == LEFT
+			//&& ((myVehicleDef*)vehDown)->getLCType() != OPTIONAL
+			)
 		{
-			if(this->CoopRequester!=NULL)
+			//find the leader 
+			double dis = ((myVehicleDef*)vehDown)->getPositionReferenceVeh
+				(this);
+			if(this->Willing2Coop( (myVehicleDef*)vehDown))
 			{
-				if(dis < CoopRequester->getPositionReferenceVeh(this))
+				if(this->CoopRequester!=NULL)
+				{
+					if(dis < CoopRequester->getPositionReferenceVeh(this))
+					{
+						this->CoopRequester = (myVehicleDef*)vehDown;
+					}
+				}
+				else
 				{
 					this->CoopRequester = (myVehicleDef*)vehDown;
 				}
-			}
-			else
-			{
-				this->CoopRequester = (myVehicleDef*)vehDown;
 			}
 		}
 	}
@@ -2418,7 +2560,25 @@ bool myVehicleDef::NeedCoop()
 		return true;
 	}
 	else
+	{
+		//CHECK IF THERE IS ANY CAR ON THE ACCELERATION LANE ON THE NEXT SECTION
+		/*if(this->CoopRequester == NULL
+			&& this->getIdCurrentLane() - 
+			AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).nbSideLanes == 1)
+		{
+			int leader_sec = this->getLeader()->getIdCurrentSection();
+			int sec_id = this->getIdCurrentSection();
+			if(this->getLeader() == NULL
+				|| leader_sec != sec_id ||leader->isFictitious())
+			{
+				if(this->getNoOfVehsOnNextOnRampAccLane())
+				{
+					return true;
+				}
+			}
+		}*/
 		return false;
+	}
 }
 
 // wiling2Coop defines if the driver is willing to cooperate given the 
@@ -2588,23 +2748,24 @@ double myVehicleDef::CalculateDesireForce(int n_lc, double d_exit,
 	//determine the urgency
 	double dis2End = d_exit;
 	double time2End = d_exit/speed;
-	double para1 = (dis2End)/this->E/abs(n_lc);
-	double para2 = (time2End)/this->T/abs(n_lc);
+	double para1 = 0;
+	double para2 = 0;
+	if(is_for_on_ramp)
+		DesireEquation(para1, para2, dis2End, time2End, n_lc, 
+			this->getMinE4OnRamp(), this->getMinT4OnRamp(), this->getE4OnRamp(), this->getT4OnRamp()); // para1 and para2 are references
+	else
+		DesireEquation(para1, para2, dis2End, time2End, n_lc, 
+		this->getMinE4OffRamp(), this->getMinT4OffRamp(), this->getE4OffRamp(), this->getT4OffRamp()); // para1 and para2 are references
 
-	// for exiting the main-lane
-	if(!is_for_on_ramp)
-	{
-		//determine the urgency
-		dis2End = d_exit;
-		time2End = d_exit/speed;
-		para1 = (dis2End)/this->getOffRampE()/abs(n_lc);
-		para2 = (time2End)/this->getOffRampT()/abs(n_lc);
-	}
+	return MAX(para2, para1);
 	
-	return Bound_Function(MAX(1-para1, 1-para2));
+	//return Bound_Function(MAX(1-para1, 1-para2));
 	//return bound(MAX(1-para1, 1-para2), 1,0);
 }
 
+//////////////////////////////////////////////////////////////////////////
+//
+//////////////////////////////////////////////////////////////////////////
 void myVehicleDef::SetInitialVal()
 {
 	this->setLastLCTime(0);
@@ -2808,7 +2969,8 @@ bool myVehicleDef::DisGapAccepted(double a_L, double a_U, double tau,
 								  double Gap_AC_Thrd,
 								  double desire,
 								  bool on_ramp,
-								  bool forward)
+								  bool forward,
+								  double acc_self)
 {
 	if(lead_v > v)
 	{
@@ -2820,7 +2982,42 @@ bool myVehicleDef::DisGapAccepted(double a_L, double a_U, double tau,
 	double theta = tau*this->getGippsTheta();
 	double b_estimate = a_L*this->getEstimateLeaderDecCoeff();
 	return GippsGap(a_L,tau,theta,x_leader,
-		x,jamGap,l_leader,v,lead_v,b_estimate,on_ramp,forward);
+		x,jamGap,l_leader,v,lead_v,b_estimate,on_ramp,forward, acc_self);
+}
+
+double myVehicleDef::AnticipatedAcc(double a_L, double a_U, double tau, 
+								  double headway, double jamGap, 
+								  double d_leader, 
+								  double l_leader, double vf, double v, 
+								  double x, 
+								  double x_leader, 
+								  double x_leader_steps_early,
+								  double lead_v, double min_headway,
+								  double Gap_AC_Thrd,
+								  double desire)
+{
+	double new_pos=0;
+	double pos = BaseCfModel(
+		a_L, 
+		a_U, 
+		tau, 
+		headway, 
+		jamGap, 
+		d_leader, 
+		l_leader, 
+		vf, 
+		v, 
+		x,
+		x_leader,
+		x_leader_steps_early,
+		lead_v, 
+		min_headway,
+		new_pos); //assuming the downstream vehicle has the same reaction time
+
+	double new_v = ((pos - x)*2/delta_t)-v;
+	double acc = (new_v - v)/delta_t;
+	
+	return acc;
 }
 
 bool myVehicleDef::AccGapAccepted(double a_L, double a_U, double tau, 
@@ -2921,7 +3118,7 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 
 //////////////////////////////////////////////////////////////////////////
 //gipps safety gaps
-//Gipps, Peter G. "A behavioural car-following model for 
+//Gipps, Peter G. "A behavioral car-following model for 
 //computer simulation." 
 //Transportation Research Part B: Methodological 15, no. 2 (1981): 105-111.
 //Eq. and (5)
@@ -2930,16 +3127,11 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta, 
 							  double x_leader,double x,double jamGap, double l_leader,
 							  double v,double lead_v,double b_estimate,
-							  bool on_ramp, bool forward)
+							  bool on_ramp, bool forward, double self_acc)
 {
-	double leader_stop_x 
-		= x_leader-pow(lead_v,2)/2/b_estimate;
 
-	//assuming no action was taken for reaction time +theta
-	double follower_stop_x
-		= x-pow(v,2)/2/maxDec+v*(reaction_time+theta); 
-
-	double thrd = pow(lead_v,2)/2/b_estimate-pow(v,2)/2/maxDec+v*(reaction_time+theta)+l_leader+jamGap;
+	if(x_leader - x - jamGap - l_leader <= 0)
+		return false;
 
 	double factor = 1;
 	if(on_ramp == true)
@@ -2961,7 +3153,63 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 			factor = b_gap_reduction_factor_offramp;
 	}
 
-	if ((x_leader - x)>thrd*factor)
+	b_estimate = b_estimate*factor;
+	
+	//if(forward == false)  //backward gap
+	//{
+	//	b_estimate = MAX(self_acc, b_estimate);
+	//	b_estimate = MIN(0, b_estimate);
+	//}
+
+	double minimun_time;
+	double minimun_gap;
+	double delta_v = lead_v-v;
+	double delta_a = b_estimate - maxDec;
+	double headway = x_leader - x;
+	double time2stationary = -lead_v/b_estimate;
+
+	minimun_time = MAX(0, -delta_v/delta_a);
+	if(delta_a >0 && time2stationary > minimun_time)
+	{
+		minimun_gap = 
+					x_leader - x - l_leader + 
+					delta_v*minimun_time + 
+					0.5*delta_a*minimun_time*minimun_time;
+	}
+	else
+	{
+		//the time when the shortest gap occurs is either the time zero
+		//or the time when the follower stops
+		double time_follower_stop = -v/maxDec;
+		minimun_gap = 
+			headway - l_leader + 
+			MIN(0,
+			delta_v*time_follower_stop + 
+			0.5*delta_a*time_follower_stop*time_follower_stop
+			);
+	}
+	minimun_gap -= (v*(reaction_time+theta));
+
+	if(minimun_gap>0)
+		return true;
+	else
+		return false;
+
+	//places where the leader stops
+	double leader_stop_x 
+		= x_leader-pow(lead_v,2)/2/b_estimate;
+
+	//assuming no action was taken for reaction time +theta
+	double follower_stop_x
+		= x-pow(v,2)/2/maxDec+v*(reaction_time+theta); 
+
+	double thrd = pow(lead_v,2)/2/b_estimate-pow(v,2)/2/maxDec+v*(reaction_time+theta)+l_leader+jamGap;
+	
+	/*if ((x_leader - x)>thrd*factor)
+	{
+		return true;
+	}*/
+	if ((x_leader - x)>thrd)
 	{
 		return true;
 	}
@@ -3141,6 +3389,8 @@ int myVehicleDef::GetOnAccLaneFlow(int next_sec)
 	return count;
 }
 
+
+
 //////////////////////////////////////////////////////////////////////////
 // Get vehicle equilibrium-position information given the leader info 
 //////////////////////////////////////////////////////////////////////////
@@ -3249,6 +3499,10 @@ void myVehicleDef::AjustArrivalVehicle()
 
 double myVehicleDef::getFrictionCoef()
 {
+	if (friction_coeff == 0)
+	{
+		return 1;
+	}
 	return friction_coeff;
 }
 
@@ -3304,6 +3558,10 @@ bool myVehicleDef::isLaneChangingPossible(int target_lane)
 				return false;
 			}
 		}
+		else if(this->getIdCurrentLane() == 2 && target_lane == RIGHT)
+		{
+			return false;
+		}
 	}
 	return A2SimVehicle::isLaneChangingPossible(target_lane);
 }
@@ -3313,6 +3571,113 @@ void myVehicleDef::setInitialLeaderId(int id)
 	this->initial_leader_id = id;
 }
 
+int myVehicleDef::getNextSectionRampType
+	(int& next_sec_center_lanes)
+{
+	int sectionid = getIdCurrentSection();		
+	A2KSectionInf sectioninfo = AKIInfNetGetSectionANGInf(sectionid);  
+
+	for(int i=0; i<sectioninfo.nbTurnings;i++)
+	{
+		int next_sec_id = 
+			AKIInfNetGetIdSectionANGDestinationofTurning(sectionid, i);
+		if(GetRampType(next_sec_id) != ON_RAMP)
+		{
+			continue;
+		}
+		else
+		{
+			next_sec_center_lanes 
+				= AKIInfNetGetSectionANGInf(next_sec_id).nbCentralLanes;
+			return this->GetRampType(next_sec_id);
+		}
+	}
+
+	return NO_RAMP;
+}
+
+void myVehicleDef::DesireEquation(double& para1, double& para2, double dis2End, 
+								  double time2End, int n_lc, double minE, double minT, double E, double T)
+{
+	if(dis2End < abs(n_lc)*E
+		|| 
+		time2End < abs(n_lc)*T)
+	{
+		if(minT > time2End
+			||
+			minE > dis2End)
+		{
+			para2  = 1;
+			para1 = 1;
+		}
+		else
+		{			
+			para2 = 1-(time2End-minT)
+				/(T-minT)
+				/abs(n_lc);
+			para1 = 1-(dis2End-minE)
+				/(E-minE)
+				/abs(n_lc);
+		}
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////
+// the maximum acceptable deceleration in before lc cf is dependent on the desire
+// when the desire approaches one, the maximum deceleration approaches to the maximum deceleration
+//////////////////////////////////////////////////////////////////////////
+double myVehicleDef::getMaxDecInSync()
+{
+	return this->getMAXdec()*this->getLaneChangeDesire();
+}
+
+//////////////////////////////////////////////////////////////////////////
+// get number of vehicles on the acc lane on the next section
+//////////////////////////////////////////////////////////////////////////
+bool myVehicleDef::getNoOfVehsOnNextOnRampAccLane()
+{
+	int n_turnings = AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).nbTurnings;
+	for(int i=0; i<n_turnings;i++)
+	{
+		int aid = AKIInfNetGetIdSectionANGDestinationofTurning(this->getIdCurrentSection(),i);
+		if(GetRampType(aid) == ON_RAMP)
+		{
+			return GetOnAccLaneFlow(aid);
+		}
+	}
+	return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// if the leader just performed the lane changing at the same time
+// return true
+//////////////////////////////////////////////////////////////////////////
+bool myVehicleDef::PreventSimutaneiousLC()
+{
+	A2SimVehicle *vehUp=NULL;
+	A2SimVehicle *vehDown=NULL;	
+	getUpDown((const A2SimVehicle *&)vehUp, 
+		(const A2SimVehicle *&)vehDown, getTargetLane(),0);
+	//no up and down vehicles, gap accepted
+	if(vehDown!=NULL && vehDown->isFictitious() ==false)
+	{
+		if(((myVehicleDef*)(vehDown))->getLastLCTime() >= AKIGetCurrentSimulationTime())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void myVehicleDef::setRampDecision(int ramp_lc_decision)
+{
+	this->_ramp_lc_decision = ramp_lc_decision;
+}
+
+int myVehicleDef::getRampDecision()
+{
+	return this->_ramp_lc_decision;;
+}
 
 
 

@@ -9,12 +9,14 @@
 #include <time.h>       /* time_t, struct tm, time, localtime */
 
 
-
-
 #define MAX(a,b)    (((a)>(b)) ? (a) : (b))
 #define MIN(a,b)    (((a)<(b)) ? (a) : (b))
 
 #define SAVE_SECTION 23551
+
+#define CAR 53
+#define ACC 23053
+#define CACC 23057
 
 //#define OUTPUT
 
@@ -251,8 +253,6 @@ void mybehavioralModel::PrintCACCFollowMsg(myVehicleDef* vehicle, myVehicleDef* 
 
 
 // Function: readVehTypeData
-// The following parameters are only required by Yeo Model not CACC Model
-// But we need to set the value for all vehicles if they switch to manual modes
 void mybehavioralModel::readVehTypeData( int vehTypeId)
 {
     A2BehavioralVehData data;
@@ -346,6 +346,11 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 	data.politeness_=
 		MIN(MAX(0, data.politeness_),1);
 
+	if(vehTypeId == ACC || vehTypeId == CACC)
+	{
+		data.politeness_ = 0;
+	}
+
 	//set vehicle headway
 	const unsigned short *min_headway_String = 
 		AKIConvertFromAsciiString( "headway_min" );
@@ -381,7 +386,6 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 // Function: arrivalNewVehicle
 // Routine for processing a new , 
 // generate a new instance and assign characteristics
-//
 
 A2SimVehicle *mybehavioralModel::
 	arrivalNewVehicle( void *handlerVehicle,unsigned short idhandler, bool isFictitiousVeh)
@@ -463,7 +467,7 @@ A2SimVehicle *mybehavioralModel::
 			res->alpha = 0.2;
 			res->beta = 0.6;
 			//steps depending on the delta t
-			res->ACF_Steps = 50;
+			res->ACF_Steps = 100;
 			res->ACF_Step = 0;
 			res->Relaxation = 0.4;
 		}

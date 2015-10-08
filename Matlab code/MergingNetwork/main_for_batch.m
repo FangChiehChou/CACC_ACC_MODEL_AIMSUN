@@ -7,7 +7,7 @@
 
 clear all;
 close all;
-rids = [461,904,907];%replication id
+rids = [461,904,907,905];%replication id
 acc = 0;
 cacc=0;
 merge_section = 332;
@@ -94,22 +94,30 @@ end
 speed = zeros(length(unique_ramp),length(unique_mainlane));
 through = zeros(length(unique_ramp),length(unique_mainlane));
 traveltime = zeros(length(unique_ramp),length(unique_mainlane));
+index=1;
 for i=1:length(unique_ramp)
     ramp = unique_ramp(1, i);
     for j=1:length(unique_mainlane)   
         mainlane = unique_mainlane(1, j);
         [~, col] = find(flows(1,:)== ramp & flows(2,:)== mainlane);
+        total_input(index) = mainlane+ramp;
         if ~isempty(col)
+            total_through(index) = mergesectiondata(col(1,1), 3);
             speed(i,j) = mergesectiondata(col(1,1), 6);
             through(i,j) = mergesectiondata(col(1,1), 3);
             traveltime(i,j) = mergesectiondata(col(1,1), 4);
         else
+            total_through(index) = 0;
             speed(i,j) = 0;
             through(i,j) = 0;
             traveltime(i,j) = 0;            
         end
+        index = index +1;
     end
 end
+
+cols = find(total_through~=0);
+plot(total_input(1,cols), total_through(1,cols), 'ro');
 
 %% plot figures
 % figs on_ramp flow
