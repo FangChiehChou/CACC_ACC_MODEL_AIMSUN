@@ -38,7 +38,7 @@ std::map<int,int> orgin_section; // the section that connects the origin
 double global_acc = 0;
 double global_cacc = 0;
 int global_interval = 0; //minutes
-int interval_shift = 7;//in hours
+int interval_shift = 6;//in hours
 
 int dmd_modify(double T)
 {
@@ -583,7 +583,8 @@ double dmd_generate_section(double time,
 
 	//get simulation steps
 	int current_step =(int)(round(time/acicle));
-
+	if(global_interval == 0)
+		return 0;
 	// according to the current time, determine the truck percentage
 	int time_index = (int)(time/60.0)/global_interval+interval_shift*60/global_interval;	
 
@@ -601,6 +602,8 @@ double dmd_generate_section(double time,
 		{
 			//next_time at lane k
 			int next_time = times.at(k);
+			if(time_index>=truck_portions[id].size())
+				break;
 			double truck_percentage = truck_portions[id][time_index][k];
 			if( next_time == current_step)
 			{
@@ -842,6 +845,8 @@ int read_pems_flow()
 					int index = line.find(delimiter);
 					std::string str_interval = line.substr(0, index);
 					int interval = atoi( str_interval.c_str());
+					if(interval == 0)
+						return 0;
 					if(global_interval == 0)
 						global_interval = interval;
 					else if(global_interval!=interval)

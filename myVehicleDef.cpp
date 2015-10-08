@@ -1176,7 +1176,7 @@ double myVehicleDef::BaseCfModel
 		{
 			acc = 
 				current_acc + (acc_target-current_acc)
-				/this->getAccSmoothCoef();
+				/this->getAccSmoothCoef()*(this->getAccSmoothCoef()-1);
 		}
 		double vel = v+acc*delta_t;
 		if(vel<0)
@@ -1271,9 +1271,6 @@ double myVehicleDef::PosCf
 	if (leader!=NULL && leader!=this)
 	{
 		Has_Leader=1;	
-
-		if(VehID == debug_track_id)
-			VehID=VehID;
 
 		//if the leader has updated, then use its previous step
 		if (leader->isUpdated())
@@ -1450,7 +1447,8 @@ const A2SimVehicle* myVehicleDef::getLeader()
 		/*&&(leader->getPositionReferenceVeh(0,this,0)>0.0)*/
 		/*&& (leader->getPositionReferenceVeh(1,this,1)>0.0)*/
 		&& (leader->getIdCurrentLane() == getIdCurrentLane() )
-		&&  leader->getIdCurrentSection()== getIdCurrentSection())
+		&&  leader->getIdCurrentSection()== getIdCurrentSection()
+		)
 		{
 			return leader;
 		}
@@ -1547,41 +1545,41 @@ double myVehicleDef::getFreeFlowSpeed()
 	double single_free =  A2SimVehicle::getFreeFlowSpeed();
 
 	//add lane specified speed limit distribution
-	A2KSectionInf info = AKIInfNetGetSectionANGInf(this->getIdCurrentSection());
-	int section_type =  this->GetRampType(this->getIdCurrentSection());
-	if(info.nbCentralLanes == 1 || section_type == TRUE_ON_RAMP || section_type == TRUE_OFF_RAMP)
-		return single_free;
-	double section_limit = info.speedLimit/3.6; //to m/s 
-	double lane_limit = section_limit;
-	switch(this->getIdCurrentLane())
-	{
-		case 1:
-			lane_limit *= 0.9;
-		case 2:
-			lane_limit *= 0.95;
-		default:
-			lane_limit *= 1;
-	}
-	single_free = MIN(single_free, lane_limit);
+	//A2KSectionInf info = AKIInfNetGetSectionANGInf(this->getIdCurrentSection());
+	//int section_type =  this->GetRampType(this->getIdCurrentSection());
+	//if(info.nbCentralLanes == 1 || section_type == TRUE_ON_RAMP || section_type == TRUE_OFF_RAMP)
+	//	return single_free;
+	//double section_limit = info.speedLimit/3.6; //to m/s 
+	//double lane_limit = section_limit;
+	//switch(this->getIdCurrentLane())
+	//{
+	//	case 1:
+	//		lane_limit *= 0.9;
+	//	case 2:
+	//		lane_limit *= 0.95;
+	//	default:
+	//		lane_limit *= 1;
+	//}
+	//single_free = MIN(single_free, lane_limit);
 
-	double d_scan = getDLCScanRange();   
-	int n_scan = getDLCScanNoCars();   
-	double v_left = single_free; 
-	double v_right = single_free;
-	if(isLaneChangingPossible(LEFT) == true)
-	{
-		v_left = getAverageSpeedAHead(LEFT, d_scan, n_scan);
-	}
-	if(isLaneChangingPossible(RIGHT) == true)
-	{
-		v_right = getAverageSpeedAHead(RIGHT, d_scan, n_scan);
-	}
-	//consider friction due to the adjacent lanes
-	double v_friction = MIN(v_right, v_left);
-	if(v_friction<single_free && v_friction>0)
-	{
-		return v_friction+(single_free-v_friction)*this->getFrictionCoef();
-	}
+	//double d_scan = getDLCScanRange();   
+	//int n_scan = getDLCScanNoCars();   
+	//double v_left = single_free; 
+	//double v_right = single_free;
+	//if(isLaneChangingPossible(LEFT) == true)
+	//{
+	//	v_left = getAverageSpeedAHead(LEFT, d_scan, n_scan);
+	//}
+	//if(isLaneChangingPossible(RIGHT) == true)
+	//{
+	//	v_right = getAverageSpeedAHead(RIGHT, d_scan, n_scan);
+	//}
+	////consider friction due to the adjacent lanes
+	//double v_friction = MIN(v_right, v_left);
+	//if(v_friction<single_free && v_friction>0)
+	//{
+	//	return v_friction+(single_free-v_friction)*this->getFrictionCoef();
+	//}
 	return single_free;
 }
 
@@ -2227,9 +2225,6 @@ bool myVehicleDef::NeedDlc()
 		v_right = 0;
 	}
 
-	if(VehID == this->getDebugTrackID())
-		VehID = VehID;
-
 	// if no vehicle is inside the scan range set the speed as free flow speed
 	if(v_left<0	 || v_left>vf) v_left=vf;
 	if(v_right<0 || v_right>vf) v_right=vf;
@@ -2245,8 +2240,9 @@ bool myVehicleDef::NeedDlc()
 		v_ahead = v_ahead/OnRampAddCoef(v_ahead, num_lane_2_rightmost);
 	
 	// change lane to left lane(1)
-    if ( v_left > v_right 
-		&& v_left > v_ahead
+    if ( 
+		//v_left > v_right && 
+		v_left > v_ahead
 		&& isLaneChangingPossible(1)
 		&& !IsOnramp(LEFT)
 		)
@@ -2258,17 +2254,10 @@ bool myVehicleDef::NeedDlc()
 			//*OnRampAddCoef()/** delta_t*/ 
 	
 		//lc_prob = (1/v_ahead - 1/v_left)/(1/vf); //the time save  per unit (m)
-
-
-		/*if (mybehavioralModel::sampleUniformDist() < lc_prob)
-        {*/
-			result=true;
-			setnLC(1);
-			setTargetLane(LEFT);  // set left lane as target lane
-        //}
     }
-    else if (v_right > v_left 
-		&& v_right > v_ahead 
+    if (
+		//v_right > v_left && 
+		v_right > v_ahead 
 		&& isLaneChangingPossible(-1)
 		&& !IsOnramp(RIGHT))
 	{
@@ -2279,18 +2268,27 @@ bool myVehicleDef::NeedDlc()
 			(v_right - v_ahead) / vf*this->getRightDLCCoeff()/** delta_t*/;
 
 		//lc_prob_right = (1/v_ahead - 1/v_right)/(1/vf)*this->getRightDLCCoeff();
-
-		/*if (mybehavioralModel::sampleUniformDist() < lc_prob)
-        {*/
-			result=true;
-			setnLC(-1);
-			setTargetLane(RIGHT);  // set right lane as target lane
-        //}
     }
-	else 
+
+	if(lc_prob_right == 0&&lc_prob == 0) 
 	{
 		setTargetLane(NOCHANGE);
 		return false;
+	}
+	else
+	{
+		if(lc_prob_right > lc_prob)
+		{
+			result=true;
+			setnLC(-1);
+			setTargetLane(RIGHT);  // set right lane as target lane
+		}
+		else
+		{
+			result=true;
+			setnLC(1);
+			setTargetLane(LEFT);  // set left lane as target lane
+		}
 	}
 
     if(result)

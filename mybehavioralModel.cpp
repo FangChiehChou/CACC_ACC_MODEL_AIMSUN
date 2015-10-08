@@ -146,10 +146,10 @@ void mybehavioralModel::removedVehicle( void *handlerVehicle, unsigned short idH
 
 void mybehavioralModel::updateVehicle( A2SimVehicle *avehicle ) 
 {
+	double delta_t = getSimStep(); 
 	if(avehicle->getId() == 269 && avehicle->getIdCurrentSection() == 23551
 		&& avehicle->getPosition(0) > 1600)
 		avehicle = avehicle;
-	double delta_t = getSimStep(); 
 	myVehicleDef *vehicle = (myVehicleDef *)avehicle;
 	/*if (vehicle->LetAimsunHandle()==true)
 		return;*/
