@@ -1,8 +1,6 @@
 #pragma once
 #include<stdio.h>
 
-
-
 bool moveData(detData* detection) // move historical detector data to avoid been over-written; piggy-back
 {
 	int i;

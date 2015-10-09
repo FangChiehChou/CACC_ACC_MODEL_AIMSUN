@@ -55,7 +55,6 @@ int AAPIInit()
 	
 
 	//****************
-
 	init_data_saving(replication,(int)( acc_percent*100),(int)(cacc_percent*100));
 
 	//disable the two-lane car following model and overtaking
@@ -82,13 +81,13 @@ int AAPIPostManage(double time, double timeSta, double timTrans, double acicle)
 	if(time>timTrans && (time-timTrans)==count*detInterval)
 	{
 		//readDetector_s(time-timTrans);  
-		if(IsBatchMode()==true)
-		{
+		/*if(IsBatchMode()==true)
+		{*/
 			if(save_data(time-timTrans) == QUIT)
 			{
 				AKISetEndSimTime(AKIGetCurrentSimulationTime()+1);
 			}
-		}
+		//}
 		else
 		{
 			//save_data(time-timTrans);

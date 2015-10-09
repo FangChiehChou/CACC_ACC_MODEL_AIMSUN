@@ -28,8 +28,8 @@ char data_saving_section_instant[len_str]="a";
 char data_saving_signal[len_str]="a";
 char data_saving_meter[len_str]="a";
 
-bool READ_DETECTOR_AGGREGATED=false;
-bool READ_SECTION_AGGREGATED=true;
+bool READ_DETECTOR_AGGREGATED=true;
+bool READ_SECTION_AGGREGATED=false;
 bool READ_DETECTOR_INSTANT=false;
 bool READ_MERGE_SECTION=false;
 bool READ_SECTION_INSTANT=false;
