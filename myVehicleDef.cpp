@@ -2338,8 +2338,8 @@ bool myVehicleDef::NeedDlc()
 		if(
 			this->getIdCurrentSection() ==
 			this->getSourceSection()
-			/*&&
-			this->getPosition()<this->getDLCForbidZoneBeforeExit()*/
+			&&
+			this->getPosition()<this->getDLCForbidZoneBeforeExit()
 			)
 		{
 			goto NO_LANE_CHANGE;
