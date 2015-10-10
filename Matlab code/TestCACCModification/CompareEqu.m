@@ -18,11 +18,11 @@ b_f = -3;
 b_e = -3*1.1;
 
 % for newell
-headway = 1.3;
+headway = 1.5;
 jamgap = 1.5; %[m]
 len = 4.5; %[m]
 
-capacity = 2100; % [vphpl]
+capacity = 2800; % [vphpl]
 headway = ...
     (v_max/(capacity/3600)-jamgap-len)/v_max;
 

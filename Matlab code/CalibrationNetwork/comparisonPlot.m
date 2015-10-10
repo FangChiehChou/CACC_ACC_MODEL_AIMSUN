@@ -5,22 +5,20 @@ close all;
 load('fielddata.mat');
 
 % simulation start time
-start_row = 73;
-end_row = 73+36;
+start_row = 6*12;
 
 % define simulation detector and its corresponding field detector
-field_flow_names =  {'flow_312757', 'flow_312771', 'flow_312856'};
-field_speed_names =  {'flow_312757', 'flow_312771', 'flow_312856'};
-field_ids =  [312757, 312771, 312856];
+field_ids =  [312757, 312771, 312857];
 simu_ids = {[3037 3059 3061 3158 3065],...
                     [2939 2937 2936 0 0],...
                     [3150 3152 3154 0 0]};
+              %                     [3136 3137 3139 0 0],...
 field_simu_pair = containers.Map(field_ids,simu_ids);
 
 %Reps
-reps = [461, 904, 905, 906, 907];
+reps = [904, 905, 906, 907, 3164, 3165, 3166, 3167, 3168];
 
-for i=1:length(reps)
+for i=1:1%length(reps)
     %clear temp vars
     clear simu_speed_pair simu_flow_pair field_speed_pair field_flow_pair;
     
@@ -48,10 +46,10 @@ for i=1:length(reps)
                     sim_data_flow{index}= data(:, 4)*12;
                     end_row = length(data(:,4))+start_row-1;
                     
-                    var_name = strcat('flow_', int2str(field_ids(1, k)));
+                    var_name = strcat('flow_', int2str(field_ids(1, j)));
                     eval(strcat('tempdata = ', var_name, '(start_row:end_row, m+1);'));                    
                     field_data_flow{index}= tempdata*12;    
-                    var_name = strcat('speed_', int2str(field_ids(1, k)));      
+                    var_name = strcat('speed_', int2str(field_ids(1, j)));      
                     eval(strcat('tempdata = ', var_name, '(start_row:end_row, m+1);'));           
                     field_data_speed{index}= tempdata;
                     
@@ -71,16 +69,12 @@ for i=1:length(reps)
     
     for j=1:key_col
         key = det_ids_key{1, j};
-        simu_data = values(simu_speed_pair);
-        temp = simu_data{1, j};
-        field_data = values(field_speed_pair);
-        temp1 = field_data{1, j};
+        temp = simu_speed_pair(key);
+        temp1 = field_speed_pair(key);
         plotspeed(temp, temp1, key, 2*j);
                         
-        simu_data = values(simu_flow_pair);
-        temp = simu_data{1, j};    
-        field_data = values(field_flow_pair);
-        temp1 = field_data{1, j};        
+        temp = simu_flow_pair(key);
+        temp1 = field_flow_pair(key);
         plotflow(temp, temp1, key, 2*j+1);
        
     end

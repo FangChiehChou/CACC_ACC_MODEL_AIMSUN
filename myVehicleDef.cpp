@@ -1562,24 +1562,24 @@ double myVehicleDef::getFreeFlowSpeed()
 	//}
 	//single_free = MIN(single_free, lane_limit);
 
-	//double d_scan = getDLCScanRange();   
-	//int n_scan = getDLCScanNoCars();   
-	//double v_left = single_free; 
-	//double v_right = single_free;
-	//if(isLaneChangingPossible(LEFT) == true)
-	//{
-	//	v_left = getAverageSpeedAHead(LEFT, d_scan, n_scan);
-	//}
-	//if(isLaneChangingPossible(RIGHT) == true)
-	//{
-	//	v_right = getAverageSpeedAHead(RIGHT, d_scan, n_scan);
-	//}
-	////consider friction due to the adjacent lanes
-	//double v_friction = MIN(v_right, v_left);
-	//if(v_friction<single_free && v_friction>0)
-	//{
-	//	return v_friction+(single_free-v_friction)*this->getFrictionCoef();
-	//}
+	double d_scan = getDLCScanRange();   
+	int n_scan = getDLCScanNoCars();   
+	double v_left = single_free; 
+	double v_right = single_free;
+	if(isLaneChangingPossible(LEFT) == true)
+	{
+		v_left = getAverageSpeedAHead(LEFT, d_scan, n_scan);
+	}
+	if(isLaneChangingPossible(RIGHT) == true)
+	{
+		v_right = getAverageSpeedAHead(RIGHT, d_scan, n_scan);
+	}
+	//consider friction due to the adjacent lanes
+	double v_friction = MIN(v_right, v_left);
+	if(v_friction<single_free && v_friction>0)
+	{
+		return v_friction+(single_free-v_friction)*this->getFrictionCoef();
+	}
 	return single_free;
 }
 
