@@ -38,7 +38,7 @@ std::map<int,int> orgin_section; // the section that connects the origin
 double global_acc = 0;
 double global_cacc = 0;
 int global_interval = 0; //minutes
-int interval_shift = 6;//in hours
+int interval_shift = 13;//in hours
 
 int dmd_modify(double T)
 {
@@ -595,8 +595,14 @@ double dmd_generate_section(double time,
 	{
 		//section id
 		int id = iterator->first;
+
+		const unsigned short *increase_DLC_close_ramp_str = 
+			AKIConvertFromAsciiString( "section_ramp_type");
+		int ramp_type = ((ANGConnGetAttributeValueInt(
+			ANGConnGetAttribute(increase_DLC_close_ramp_str), id)));
+
 		std::vector<int> times = time_next[id];
-		//the lane id in pmes is the opposite of the aimsun
+		//the lane id in pmes is the opposite of the AIMSUN
 		//call in reverse order
 		for(int k=0;k<times.size();k++)
 		{
@@ -651,7 +657,12 @@ double dmd_generate_section(double time,
 					avg_headway_flow = min(avg_headway_flow,
 						3600.0/(((double)flows[id][time_index][k])/(double)global_interval*60.0));
 				}
-				int new_time = (int)(RandomExpHeadway(1, avg_headway_flow)/acicle);
+				double min_headway = 1.2;
+				if (ramp_type == 3) // on ramp
+				{
+					min_headway = 3;
+				}
+				int new_time = (int)(RandomExpHeadway(min_headway, avg_headway_flow)/acicle+0.5); //add 0.5 is because the (int) always truncate
 				time_next[id][k] = new_time+current_step;
 			}
 			

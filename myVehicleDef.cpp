@@ -274,6 +274,11 @@ void myVehicleDef::UpdateVehicle(double simu_step)
 		return;
 	}
 
+	/*if(this->GetRampType(this->getIdCurrentSection()) == TRUE_ON_RAMP)
+	{
+		return;
+	}*/
+
 	if(this->ApplyNGSIMModel())
 	{
 		RunNGSIM(false);
@@ -1174,10 +1179,20 @@ double myVehicleDef::BaseCfModel
 		}
 		else
 		{
+			//this is the interpolation method
 			acc = 
 				current_acc + (acc_target-current_acc)
 				/this->getAccSmoothCoef()*(this->getAccSmoothCoef()-1);
+			
+			//change to Lu's method
+			/*int total_transit_steps =(int)( this->getAccSmoothCoef()/AKIGetSimulationStepTime());
+			acc = 
+				(1-getSmoothTransitTime()/total_transit_steps)*current_acc + 
+				(getSmoothTransitTime()/total_transit_steps)*acc_target;
+			this->addOneStepTransitTime();*/
+
 		}
+
 		double vel = v+acc*delta_t;
 		if(vel<0)
 		{
@@ -1562,24 +1577,27 @@ double myVehicleDef::getFreeFlowSpeed()
 	//}
 	//single_free = MIN(single_free, lane_limit);
 
-	double d_scan = getDLCScanRange();   
-	int n_scan = getDLCScanNoCars();   
-	double v_left = single_free; 
-	double v_right = single_free;
-	if(isLaneChangingPossible(LEFT) == true)
-	{
-		v_left = getAverageSpeedAHead(LEFT, d_scan, n_scan);
-	}
-	if(isLaneChangingPossible(RIGHT) == true)
-	{
-		v_right = getAverageSpeedAHead(RIGHT, d_scan, n_scan);
-	}
-	//consider friction due to the adjacent lanes
-	double v_friction = MIN(v_right, v_left);
-	if(v_friction<single_free && v_friction>0)
-	{
-		return v_friction+(single_free-v_friction)*this->getFrictionCoef();
-	}
+	//for friction we only look a few distance away and a few cars ahead
+	//double d_scan = getDLCScanRange();   
+	//int n_scan = getDLCScanNoCars();   
+	//d_scan = 50; //50 meters
+	//n_scan = 3;  //three cars
+	//double v_left = single_free; 
+	//double v_right = single_free;
+	//if(isLaneChangingPossible(LEFT) == true)
+	//{
+	//	v_left = getAverageSpeedAHead(LEFT, d_scan, n_scan);
+	//}
+	//if(isLaneChangingPossible(RIGHT) == true)
+	//{
+	//	v_right = getAverageSpeedAHead(RIGHT, d_scan, n_scan);
+	//}
+	////consider friction due to the adjacent lanes
+	//double v_friction = MIN(v_right, v_left);
+	//if(v_friction<single_free && v_friction>0)
+	//{
+	//	return v_friction+(single_free-v_friction)*this->getFrictionCoef();
+	//}
 	return single_free;
 }
 
@@ -2767,6 +2785,7 @@ double myVehicleDef::CalculateDesireForce(int n_lc, double d_exit,
 void myVehicleDef::SetInitialVal()
 {
 	this->setLastLCTime(0);
+	this->_smooth_transit_time = 1;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3675,6 +3694,18 @@ void myVehicleDef::setRampDecision(int ramp_lc_decision)
 int myVehicleDef::getRampDecision()
 {
 	return this->_ramp_lc_decision;;
+}
+
+int myVehicleDef::getSmoothTransitTime()
+{
+	return _smooth_transit_time;
+}
+
+void myVehicleDef::addOneStepTransitTime()
+{
+	int temp = this->_smooth_transit_time;
+	this->_smooth_transit_time = temp%
+		((int)(this->getAccSmoothCoef()/AKIGetSimulationStepTime()))+1;
 }
 
 

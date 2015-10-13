@@ -284,6 +284,7 @@ public:
 	double friction_coeff;
 	int initial_leader_id;
 	int _ramp_lc_decision;
+	int _smooth_transit_time;
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -489,5 +490,7 @@ public:
 	double AnticipatedAcc(double a_L, double a_U, double tau, double headway, double jamGap, double d_leader, double l_leader, double vf, double v, double x, double x_leader, double x_leader_steps_early, double lead_v, double min_headway, double Gap_AC_Thrd, double desire);
 	void setRampDecision(int ramp_lc_decision);
 	int getRampDecision();
+	int getSmoothTransitTime();
+	void addOneStepTransitTime();
 };
 #endif
