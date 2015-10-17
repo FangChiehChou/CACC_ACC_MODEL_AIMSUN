@@ -11,18 +11,18 @@
 
 clear;
 
-v_max = 31.3;  %[m/s]
-tau = 0.5; 
+v_max = 25;  %[m/s]
+tau = 0.3; 
 theta = 0.2;
-b_f = -3;
-b_e = -3*1.1;
+b_f = -2;
+b_e = -2*1.1;
 
 % for newell
 headway = 1.5;
-jamgap = 1.5; %[m]
-len = 4.5; %[m]
+jamgap = 3; %[m]
+len = 6; %[m]
 
-capacity = 2800; % [vphpl]
+capacity = 2400; % [vphpl]
 headway = ...
     (v_max/(capacity/3600)-jamgap-len)/v_max;
 

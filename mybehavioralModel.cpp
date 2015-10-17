@@ -343,8 +343,15 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 	data.politeness_ = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( politeness_str ), vehTypeId );
+	const unsigned short *politeness_optional_str = 
+		AKIConvertFromAsciiString( "polite_optional");
+	data.politeness_optional = 
+		ANGConnGetAttributeValueDouble(
+		ANGConnGetAttribute( politeness_optional_str ), vehTypeId );
 	data.politeness_=
 		MIN(MAX(0, data.politeness_),1);
+	data.politeness_optional = 
+		MIN(MAX(0, data.politeness_optional),1);
 
 	if(vehTypeId == ACC || vehTypeId == CACC)
 	{
@@ -412,7 +419,7 @@ A2SimVehicle *mybehavioralModel::
 
 		res->setMode(0);
 
-		//sampling reaction time
+		//sampling reaction timef
 		double reaction_time = sampleNormalDist(
 			(*iter).second.avg_reaction_time,
 			(*iter).second.dev_reaction_time
@@ -464,10 +471,10 @@ A2SimVehicle *mybehavioralModel::
 		}
 		else
 		{
-			res->alpha = 0.2;
-			res->beta = 0.2;
+			res->alpha = 0.3; //reaction time
+			res->beta = 0.3; //jam gap
 			//steps depending on the delta t
-			res->ACF_Steps = 100;
+			res->ACF_Steps = 20;
 			res->ACF_Step = 0;
 			res->Relaxation = 0.3;
 		}
@@ -484,6 +491,9 @@ A2SimVehicle *mybehavioralModel::
 
 		res->setPoliteness((*iter).second.politeness_);
 		res->setRandomPoliteness(AKIGetRandomNumber());
+		res->setPolitenessOptional((*iter).second.politeness_optional);
+		res->setRandomPolitenessOptional(AKIGetRandomNumber());
+
 		res->setFrictionCoef((*iter).second.friction);
 
 		res->setGapAcceptanceModel(ReadGapModel(exp_id));
@@ -524,6 +534,7 @@ A2SimVehicle *mybehavioralModel::
 			std::_cpp_min(lc_desire_max, 
 			std::_cpp_max(lc_desire, lc_desire_min));
 		res->setLaneChangeDesireThrd(lc_desire);
+		res->setLaneChangeDesireThrd(avg_lc_desire);
 
 		const unsigned short *dlc_coeff = 
 			AKIConvertFromAsciiString( "dlc_coeff");

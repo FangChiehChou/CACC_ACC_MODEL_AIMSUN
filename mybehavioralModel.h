@@ -45,6 +45,7 @@ public:
 	double min_time_between_lc_;
 	double politeness_;
 	double friction;
+	double politeness_optional;
 };
 
 

@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <deque>
 #include <hash_map>
+#include <map>
+
 
 //#define USE_CACC   2 // 1: using DYSu algorithm; 2: use Vicente model
 
@@ -88,6 +90,10 @@ public:
 	double lane_change_prob;
 	bool getapplyACC();
 	const A2SimVehicle* leader ;
+	const A2SimVehicle* left_follower ;
+	const A2SimVehicle* left_leader ;
+	const A2SimVehicle* right_follower ;
+	const A2SimVehicle* right_leader ;
 	InfVeh info;
 	StaticInfVeh staticinfo;
 	InfVeh leader_info;
@@ -285,6 +291,13 @@ public:
 	int initial_leader_id;
 	int _ramp_lc_decision;
 	int _smooth_transit_time;
+	double politeness_optional;
+	double random_politeness_optional;
+	double left_avg_speed_ahead;
+	double avg_speed_ahead;
+	double right_avg_speed_ahead;
+	A2KSectionInf* sec_inf;
+
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -343,7 +356,8 @@ public:
 		
 	double getRemainLength()
 	{
-		return AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).length-this->getPosition();
+		return this->sec_inf->length - this->getPosition();
+			//AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).length-this->getPosition();
 	};
 
 	double getDLCScanRange()
@@ -366,7 +380,7 @@ public:
 	double getAccSmoothCoef(){return this->acc_smooth_coeff_;};
 	void setAccSmoothCoef(double val)
 				{this->acc_smooth_coeff_=val;};
-	void setLastLCTarget(const int targetLane)
+	void setLastLCTarget(int targetLane)
 				{this->last_lc_target = targetLane;};
 	int getLastLCTarget()
 				{return (this->last_lc_target==LEFT||this->last_lc_target==RIGHT)?
@@ -447,7 +461,7 @@ public:
 		{return this->f_gap_reduction_factor_offramp;};
 	double getBackwardGapReductionOffRamp()
 		{return this->b_gap_reduction_factor_offramp;};
-	double OnRampAddCoef(double ahead_speed, int num_lane_2_rightmost);
+	double OnRampAddCoef(int num_lane_2_rightmost);
 	double getIncreaseDLCCloseRamp();
 	void setIncreaseDLCCloseRamp(double val);
 	int GetRampType(int sec_id);
@@ -492,5 +506,14 @@ public:
 	int getRampDecision();
 	int getSmoothTransitTime();
 	void addOneStepTransitTime();
+	double getPolitenessOptional();
+	double getRandomPolitenessOptional();
+	void setRandomPolitenessOptional(double param1);
+	void setPolitenessOptional(double param1);
+	bool ExistNewLCer(int direction);
+	void getAroundSpeed();
+	void getAroundLeaderFollowers();
+	double DLCDesire(double target_lane);
+	void getSectionInfo();
 };
 #endif

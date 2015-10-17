@@ -71,6 +71,8 @@
 #define ACC_LANE_LENGTH 250 //Length of on-ramp acceleration lane[m]
 #define FORBID_RAMPCHANGE_ZONE 0 //Length of on-ramp acceleration lane[m]
 
+#define MIN_DLC_SPEED_DIFF 2.34 //5 [mph]
+
 double bound(double x,double x_high,double x_low)
 {
 	double b;
@@ -240,8 +242,8 @@ void myVehicleDef::RunNGSIM(bool mode_predetermined)
 #pragma optimize("",off)
 bool myVehicleDef::ApplyNGSIMModel() 
 {
-	int sectionid = getIdCurrentSection();		
-	A2KSectionInf sectioninfo = AKIInfNetGetSectionANGInf(sectionid);  
+	//int sectionid = getIdCurrentSection();		
+	A2KSectionInf sectioninfo =  *this->sec_inf;
 	if (getapplyACC() == false //this is not a cacc or acc vehicle
 		||isCurrentLaneOnRamp() //this vehicle is on ramp
 		|| this->getIdCurrentSection() == FeederOnRamp //this vehicle is on ramp
@@ -256,6 +258,7 @@ bool myVehicleDef::ApplyNGSIMModel()
 
 void myVehicleDef::UpdateVehicle(double simu_step)
 {
+	this->getSectionInfo();
 
 	delta_t = simu_step;
 	int veh_Id= getId();
@@ -263,7 +266,12 @@ void myVehicleDef::UpdateVehicle(double simu_step)
 	this->info = AKIVehTrackedGetInf(veh_Id);
 	this->staticinfo = AKIVehTrackedGetStaticInf(veh_Id);
 	AKIVehSetAsNoTracked(veh_Id);
+	// get leader and vehicles on the left/right lane to avoid recalling this function during this update
 	this->leader = this->getLeader();
+
+	this->getAroundSpeed();
+	this->getAroundLeaderFollowers();
+
 
 	if(this->getNewArrivalAdjust()==true)
 	{
@@ -302,8 +310,9 @@ bool myVehicleDef::LetAimsunHandle()
 	}
 	else
 	{
-		int sectionid = getIdCurrentSection();
-		A2KSectionInf sectioninfo = AKIInfNetGetSectionANGInf(sectionid);
+		//int sectionid = getIdCurrentSection();	
+		A2KSectionInf sectioninfo =  *this->sec_inf;
+		//A2KSectionInf sectioninfo = AKIInfNetGetSectionANGInf(sectionid);
 		if(sectioninfo.length-getPosition(0) <= buffer
 			&& sectioninfo.id != END_SECTION)
 		{
@@ -585,10 +594,20 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 	//desire determines some parameters 
 	//in the gap acceptance process
 	double desire = this->getLaneChangeDesire();
-	A2SimVehicle *vehUp=NULL;
-	A2SimVehicle *vehDown=NULL;	
-	getUpDown((const A2SimVehicle *&)vehUp, 
-		(const A2SimVehicle *&)vehDown, getTargetLane(), 0);
+	const A2SimVehicle *vehUp=NULL;
+	const A2SimVehicle *vehDown=NULL;	
+	if(getTargetLane() == LEFT)
+	{
+		vehUp = this->left_follower;
+		vehDown = this->left_leader;
+	}
+	else
+	{
+		vehUp = this->right_follower;
+		vehDown = this->right_leader;
+	}
+	/*getUpDown((const A2SimVehicle *&)vehUp, 
+		(const A2SimVehicle *&)vehDown, getTargetLane(), 0);*/
 	//no up and down vehicles, gap accepted
 	if ((vehDown == NULL||this==vehDown)&&
 		(vehUp == this || vehUp == NULL))
@@ -1182,7 +1201,8 @@ double myVehicleDef::BaseCfModel
 			//this is the interpolation method
 			acc = 
 				current_acc + (acc_target-current_acc)
-				/this->getAccSmoothCoef()*(this->getAccSmoothCoef()-1);
+				/this->getAccSmoothCoef();
+				//*(this->getAccSmoothCoef()-1);
 			
 			//change to Lu's method
 			/*int total_transit_steps =(int)( this->getAccSmoothCoef()/AKIGetSimulationStepTime());
@@ -1578,26 +1598,26 @@ double myVehicleDef::getFreeFlowSpeed()
 	//single_free = MIN(single_free, lane_limit);
 
 	//for friction we only look a few distance away and a few cars ahead
-	//double d_scan = getDLCScanRange();   
-	//int n_scan = getDLCScanNoCars();   
-	//d_scan = 50; //50 meters
-	//n_scan = 3;  //three cars
-	//double v_left = single_free; 
-	//double v_right = single_free;
-	//if(isLaneChangingPossible(LEFT) == true)
-	//{
-	//	v_left = getAverageSpeedAHead(LEFT, d_scan, n_scan);
-	//}
-	//if(isLaneChangingPossible(RIGHT) == true)
-	//{
-	//	v_right = getAverageSpeedAHead(RIGHT, d_scan, n_scan);
-	//}
-	////consider friction due to the adjacent lanes
-	//double v_friction = MIN(v_right, v_left);
-	//if(v_friction<single_free && v_friction>0)
-	//{
-	//	return v_friction+(single_free-v_friction)*this->getFrictionCoef();
-	//}
+	double d_scan = getDLCScanRange();   
+	int n_scan = getDLCScanNoCars();   
+	d_scan = 50; //50 meters
+	n_scan = 3;  //three cars
+	double v_left = single_free; 
+	double v_right = single_free;
+	if(isLaneChangingPossible(LEFT) == true)
+	{
+		v_left = getAverageSpeedAHead(LEFT, d_scan, n_scan);
+	}
+	if(isLaneChangingPossible(RIGHT) == true)
+	{
+		v_right = getAverageSpeedAHead(RIGHT, d_scan, n_scan);
+	}
+	//consider friction due to the adjacent lanes
+	double v_friction = MIN(v_right, v_left);
+	if(v_friction<single_free && v_friction>0)
+	{
+		return v_friction+(single_free-v_friction)*this->getFrictionCoef();
+	}
 	return single_free;
 }
 
@@ -1968,10 +1988,20 @@ int myVehicleDef::RampCfDecision()
 void myVehicleDef::BeforeOnRampLcSlowDown()
 {
 	//run synchronization based lane change
-	A2SimVehicle *vehUp=NULL;
-	A2SimVehicle *vehDown=NULL;	
-	getUpDown((const A2SimVehicle *&)vehUp, (const A2SimVehicle *&)vehDown, 
-		this->getTargetLane(), 0);
+	const A2SimVehicle *vehUp=NULL;
+	const A2SimVehicle *vehDown=NULL;	
+	if(getTargetLane() == LEFT)
+	{
+		vehUp = this->left_follower;
+		vehDown = this->left_leader;
+	}
+	else
+	{
+		vehUp = this->right_follower;
+		vehDown = this->right_leader;
+	}
+	/*getUpDown((const A2SimVehicle *&)vehUp, (const A2SimVehicle *&)vehDown, 
+		this->getTargetLane(), 0);*/
 	//now slow down to catch the next gap with a mild deceleration
 	double posSlow = PosCfSkipGap(vehUp);
 	//the current leader
@@ -1995,10 +2025,24 @@ void myVehicleDef::BeforeOnRampLcSlowDown()
 void myVehicleDef::BeforeOnRampLcSync()
 {
 	//run synchronization based lane change
-	A2SimVehicle *vehUp=NULL;
+	const A2SimVehicle *vehUp=NULL;
+	const A2SimVehicle *vehDown=NULL;	
+	if(getTargetLane() == LEFT)
+	{
+		vehUp = this->left_follower;
+		vehDown = this->left_leader;
+	}
+	else
+	{
+		vehUp = this->right_follower;
+		vehDown = this->right_leader;
+	}
+
+	/*A2SimVehicle *vehUp=NULL;
 	A2SimVehicle *vehDown=NULL;	
+
 	getUpDown((const A2SimVehicle *&)vehUp, 
-		(const A2SimVehicle *&)vehDown, this->getTargetLane(), 0);
+		(const A2SimVehicle *&)vehDown, this->getTargetLane(), 0);*/
 	double x_CF_Sync = PosCf(vehDown, 1, beta, alpha, Relaxation);
 
 	double max_accept_dec = getMaxDecInSync();//maximum acceptable deceleration at the current desire level
@@ -2032,11 +2076,23 @@ void myVehicleDef::BeforeOnRampLcSync()
 void myVehicleDef::BeforeExitorTurningLcSlowDown()
 {
 	//run synchronization based lane change
-	A2SimVehicle *vehUp=NULL;
+	const A2SimVehicle *vehUp=NULL;
+	const A2SimVehicle *vehDown=NULL;	
+	if(getTargetLane() == LEFT)
+	{
+		vehUp = this->left_follower;
+		vehDown = this->left_leader;
+	}
+	else
+	{
+		vehUp = this->right_follower;
+		vehDown = this->right_leader;
+	}
+	/*A2SimVehicle *vehUp=NULL;
 	A2SimVehicle *vehDown=NULL;	
 	getUpDown((const A2SimVehicle *&)vehUp, 
 		(const A2SimVehicle *&)vehDown, 
-		this->getTargetLane(), 0);
+		this->getTargetLane(), 0);*/
 	//now slow down to catch the next gap with a mild deceleration
 	double posSlow = PosCfSkipGap(vehUp, true);
 	//the current leader
@@ -2058,10 +2114,22 @@ void myVehicleDef::BeforeExitorTurningLcSlowDown()
 void myVehicleDef::BeforeExitorTurningLcSync()
 {
 	//run synchronization based lane change
-	A2SimVehicle *vehUp=NULL;
+	const A2SimVehicle *vehUp=NULL;
+	const A2SimVehicle *vehDown=NULL;	
+	if(getTargetLane() == LEFT)
+	{
+		vehUp = this->left_follower;
+		vehDown = this->left_leader;
+	}
+	else
+	{
+		vehUp = this->right_follower;
+		vehDown = this->right_leader;
+	}
+	/*A2SimVehicle *vehUp=NULL;
 	A2SimVehicle *vehDown=NULL;	
 	getUpDown((const A2SimVehicle *&)vehUp, 
-		(const A2SimVehicle *&)vehDown, this->getTargetLane(), 0);
+		(const A2SimVehicle *&)vehDown, this->getTargetLane(), 0);*/
 	double x_CF_Sync = PosCf(vehDown, 1, beta, alpha, Relaxation);
 
 	//the current leader
@@ -2103,9 +2171,9 @@ double myVehicleDef::distance2EndAccLane()
 //get the length of the acceleration lane
 double myVehicleDef::posEndAccLane()
 {
-	int secId = this->getIdCurrentSection();
-	A2KSectionInf sectionInfo = AKIInfNetGetSectionANGInf(secId);
-	return sectionInfo.distance_OnRamp;
+	/*int secId = this->getIdCurrentSection();
+	A2KSectionInf sectionInfo = AKIInfNetGetSectionANGInf(secId);*/
+	return this->sec_inf->distance_OnRamp;
 }
 
 double myVehicleDef::getLaneChangeDesire()
@@ -2118,9 +2186,23 @@ double myVehicleDef::getLaneChangeDesire()
 void myVehicleDef::UpdateLc()
 {
 	double nextPos = 0;
-	A2SimVehicle *vehUp=NULL;
+
+	const A2SimVehicle *vehUp=NULL;
+	const A2SimVehicle *vehDown=NULL;	
+	if(getTargetLane() == LEFT)
+	{
+		vehUp = this->left_follower;
+		vehDown = this->left_leader;
+	}
+	else
+	{
+		vehUp = this->right_follower;
+		vehDown = this->right_leader;
+	}
+
+	/*A2SimVehicle *vehUp=NULL;
 	A2SimVehicle *vehDown=NULL;	
-	getUpDown((const A2SimVehicle *&)vehUp, (const A2SimVehicle *&)vehDown, 1, 0);
+	getUpDown((const A2SimVehicle *&)vehUp, (const A2SimVehicle *&)vehDown, 1, 0);*/
 	nextPos = this->PosCf(vehDown, 1, this->beta, this->alpha, this->Relaxation);
 	if((nextPos-getPosition())/delta_t*2-this->getSpeed()>30)
 	{
@@ -2144,8 +2226,10 @@ void myVehicleDef::UpdateLc()
 //so this function tells if the vehicle is on the side lane
 bool myVehicleDef::NeedRampLc()
 {
-	int secId = this->getIdCurrentSection();
-	A2KSectionInf sectionInfo = AKIInfNetGetSectionANGInf(secId);
+	//int secId = this->getIdCurrentSection();
+	A2KSectionInf sectionInfo = *this->sec_inf;
+	//AKIInfNetGetSectionANGInf(secId);
+
 	if(sectionInfo.nbSideLanes<=0)
 		return false;
 
@@ -2189,6 +2273,41 @@ bool myVehicleDef::NeedRampLc()
 	return false;
 }
 
+double myVehicleDef::DLCDesire(double target_lane)
+{
+	if(!isLaneChangingPossible(target_lane)
+		|| this->IsOnramp(target_lane))
+		return 0;
+
+	double v = this->getSpeed();
+	double ant_speed = target_lane == LEFT?this->left_avg_speed_ahead:this->right_avg_speed_ahead;
+	if (target_lane == LEFT
+		&& this->left_leader!=NULL)
+	{
+		ant_speed = MIN(((myVehicleDef*)this->left_leader)->getSpeed(), ant_speed);
+	}
+	else
+	{
+		ant_speed = MIN(((myVehicleDef*)this->right_leader)->getSpeed(), ant_speed);
+	}
+	
+	if(ant_speed < v)
+		return 0;
+	else
+	{
+		if(ant_speed - v < MIN_DLC_SPEED_DIFF)
+		{
+			return false;
+		}
+		else
+		{
+			double desire =  MIN(1, (ant_speed-v)/v);
+			if(target_lane = RIGHT)
+				desire *= this->getRightDLCCoeff();
+			return desire;
+		}
+	}
+}
 
 double myVehicleDef::GetAdditionalDlcDesire(int target_lane)
 {
@@ -2198,6 +2317,8 @@ double myVehicleDef::GetAdditionalDlcDesire(int target_lane)
 	double v_target = isLaneChangingPossible(target_lane) ?
 		getAverageSpeedAHead(target_lane, d_scan, n_scan) : 0;
 	double v_ahead = getAverageSpeedAHead(0, d_scan, n_scan);
+	
+
 	return MAX(0,(v_target - v_ahead) / vf);
 }
 
@@ -2212,83 +2333,49 @@ bool myVehicleDef::NeedDlc()
 	if(this->getVehType() == Truck_Type)
 		return false;
 
-    int target_lane = 0;
-    double vf= 0.0;
-    double lc_prob=0.0;
+ //   int target_lane = 0;
+ //   double vf= 0.0;
+	double lc_prob=0.0;
 	double lc_prob_right=0.0;
-    double d_scan    = getDLCScanRange();   // scan maximum 50m ahead
-	//double n_scan    = 5;   // scan maximum 5 vehicles ahead// change by XYLu on 07_22_14 to avoid type problem
-    int n_scan = getDLCScanNoCars();   // scan maximum 5 vehicles ahead
-    double phi = 2.17F;
-    bool result=false;
-	double v_left=0.0;
-	double v_ahead=0.0;
-	double v_right=0.0;
+ //   double d_scan    = getDLCScanRange();   // scan maximum 50m ahead
+	////double n_scan    = 5;   // scan maximum 5 vehicles ahead// change by XYLu on 07_22_14 to avoid type problem
+ //   int n_scan = getDLCScanNoCars();   // scan maximum 5 vehicles ahead
+ //   double phi = 2.17F;
+	bool result=false;
+	//double v_left=0.0;
+	//double v_ahead=0.0;
+	//double v_right=0.0;
 
 	//int ind_lc = 0;	//index for LC (0: no LC, 1: left LC, -1:right LC)
 	
 	//d_scan cannot be larger than the section length
 
-    vf= getFreeFlowSpeed();
+   /* vf= getFreeFlowSpeed();
     v_left = isLaneChangingPossible(1) ?
         getAverageSpeedAHead(1, d_scan, n_scan) : 0;
     v_ahead = getAverageSpeedAHead(0, d_scan, n_scan);
     v_right = isLaneChangingPossible(-1) ?
-        getAverageSpeedAHead(-1, d_scan, n_scan) : 0;
+        getAverageSpeedAHead(-1, d_scan, n_scan) : 0;*/
 	
-	int sec_id = getIdCurrentSection();
-	A2KSectionInf inf = AKIInfNetGetSectionANGInf(sec_id);
-	if(this->getIdCurrentLane() - inf.nbSideLanes == 1)
-	{
-		v_right = 0;
-	}
-
 	// if no vehicle is inside the scan range set the speed as free flow speed
-	if(v_left<0	 || v_left>vf) v_left=vf;
+	/*if(v_left<0	 || v_left>vf) v_left=vf;
 	if(v_right<0 || v_right>vf) v_right=vf;
-	if(v_ahead<0 || v_ahead>vf) v_ahead=vf;
+	if(v_ahead<0 || v_ahead>vf) v_ahead=vf;*/
 
-	//if this car is at the rightmost lane or the second right-most lane
-	int num_sidelanes =
-		AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).nbSideLanes;
-	int num_lane_2_rightmost = 
-		this->getIdCurrentLane()-num_sidelanes;
-	if(num_lane_2_rightmost<=2
-	   && isLaneChangingPossible(LEFT) == true)
-		v_ahead = v_ahead/OnRampAddCoef(v_ahead, num_lane_2_rightmost);
-	
-	// change lane to left lane(1)
-    if ( 
-		//v_left > v_right && 
-		v_left > v_ahead
-		&& isLaneChangingPossible(1)
-		&& !IsOnramp(LEFT)
-		)
-	{
-		//MyPrintString("Try to left LC (%i)", getId());
-		//ind_lc = 1;
-		//lc_prob = (v_left - v_ahead) * delta_t / (vf * phi);
-		lc_prob = (v_left - v_ahead) / (vf);
-			//*OnRampAddCoef()/** delta_t*/ 
-	
-		//lc_prob = (1/v_ahead - 1/v_left)/(1/vf); //the time save  per unit (m)
-    }
-    if (
-		//v_right > v_left && 
-		v_right > v_ahead 
-		&& isLaneChangingPossible(-1)
-		&& !IsOnramp(RIGHT))
-	{
-		//MyPrintString("Try to right LC (%i)", getId());
-		//ind_lc = -1;
-		//lc_prob_right = (v_right - v_ahead) * delta_t / (vf * phi);
-		lc_prob_right = 
-			(v_right - v_ahead) / vf*this->getRightDLCCoeff()/** delta_t*/;
+	// if the leader or follower on the target lane is also changed from this lane
+	// then do not do lane change 
+	// this is used to avoid simultaneous lane change
 
-		//lc_prob_right = (1/v_ahead - 1/v_right)/(1/vf)*this->getRightDLCCoeff();
-    }
 
-	if(lc_prob_right == 0&&lc_prob == 0) 
+	lc_prob = DLCDesire(LEFT);
+	lc_prob_right = DLCDesire(RIGHT);
+
+	if(ExistNewLCer(LEFT)) lc_prob = 0;
+	if(ExistNewLCer(RIGHT)) lc_prob_right = 0;
+
+	if(lc_prob_right == 0
+		&&
+		lc_prob == 0) 
 	{
 		setTargetLane(NOCHANGE);
 		return false;
@@ -2522,10 +2609,10 @@ bool myVehicleDef::NeedCoop()
 	this->CoopRequester = NULL;
 	//if both lanes have cooperation requesters
 	//select the one that is the closest
-	A2SimVehicle *vehUp=NULL;
-	A2SimVehicle *vehDown=NULL;	
-	getUpDown((const A2SimVehicle *&)vehUp, 
-		(const A2SimVehicle *&)vehDown, LEFT, 0);
+	const A2SimVehicle *vehUp=this->left_follower;
+	const A2SimVehicle *vehDown=this->left_leader;	
+	/*getUpDown((const A2SimVehicle *&)vehUp, 
+		(const A2SimVehicle *&)vehDown, LEFT, 0);*/
 	if (this->getLastLCTarget() != RIGHT)
 	{
 		if(vehDown!=NULL
@@ -2543,8 +2630,8 @@ bool myVehicleDef::NeedCoop()
 
 	if(this->getLastLCTarget() != LEFT)
 	{
-		getUpDown((const A2SimVehicle *&)vehUp, 
-			(const A2SimVehicle *&)vehDown, RIGHT, 0);
+		vehDown = this->right_leader;
+		vehUp = this->right_follower;
 		if(vehDown!=NULL
 			&& ((myVehicleDef*)vehDown)->getMode() == BCF
 			&& ((myVehicleDef*)vehDown)->getTargetLane() == LEFT
@@ -2601,8 +2688,13 @@ bool myVehicleDef::NeedCoop()
 // status of the coop-requester
 bool myVehicleDef::Willing2Coop(myVehicleDef *coop_veh)
 {
-	if(this->getPoliteness() 
+	if((coop_veh->getMandatoryType() == MANDATORY 
+		&& this->getPoliteness()
 		> this->getRandomPoliteness())
+		||
+		(coop_veh->getMandatoryType() == OPTIONAL 
+		&& this->getPolitenessOptional()
+		> this->getRandomPolitenessOptional()))
 	{
 		if(!this->IsCoopEffectMuch(coop_veh))
 			return true;
@@ -2669,8 +2761,8 @@ bool myVehicleDef::CombineLCDesires()
 			right_desire = 0;
 			if (desireLC_option_left == 0)
 			{
-				desireLC_option_left = 
-					GetAdditionalDlcDesire(LEFT);
+				desireLC_option_left = this->DLCDesire(LEFT);
+					//GetAdditionalDlcDesire(LEFT);
 				left_desire = desireLC_force_left+
 					desireLC_option_left*discretionary_LC_weight;
 			}
@@ -2680,8 +2772,8 @@ bool myVehicleDef::CombineLCDesires()
 			left_desire = 0;
 			if(desireLC_option_right == 0)
 			{
-				desireLC_option_right = 
-					GetAdditionalDlcDesire(RIGHT);
+				desireLC_option_right = this->DLCDesire(RIGHT);
+					//GetAdditionalDlcDesire(RIGHT);
 				right_desire = desireLC_force_right+
 					desireLC_option_right*discretionary_LC_weight;
 			}
@@ -2723,8 +2815,12 @@ bool myVehicleDef::CombineLCDesires()
 			}
 
 			setLCType(type);
+			setMandatoryType(type);
 			setTargetLane(target_lane);
 			this->setLaneChangeDesire(desire);
+
+
+
 			//no need to set number lane changes here
 			//it has already been set in NeedLc
 			return true;
@@ -2737,6 +2833,7 @@ bool myVehicleDef::CombineLCDesires()
 
 No_Lane_Change:
 	setLCType(0);
+	setMandatoryType(NOCHANGE);
 	setTargetLane(NOCHANGE);
 	this->setLaneChangeDesire(0);
 	setnLC(0);
@@ -2989,13 +3086,21 @@ bool myVehicleDef::DisGapAccepted(double a_L, double a_U, double tau,
 								  bool forward,
 								  double acc_self)
 {
-	if(lead_v > v)
-	{
-		if (x_leader-x-l_leader-jamGap>=0)
+	/*if(this->getMandatoryType() == MANDATORY)
+	{*/
+		/*if(lead_v > v)
 		{
-			return true;
-		}	
-	}
+			if (x_leader-x-l_leader-jamGap>=0)
+			{
+				return true;
+			}	
+		}*/
+	//}
+
+	//if this is optional LC; only acc > 0 willl be approved
+	/*if(acc_self <= 0 && this->getMandatoryType() == OPTIONAL)
+		return false;*/
+
 	double theta = tau*this->getGippsTheta();
 	double b_estimate = a_L*this->getEstimateLeaderDecCoeff();
 	return GippsGap(a_L,tau,theta,x_leader,
@@ -3287,7 +3392,7 @@ double myVehicleDef::Bound_Function(double param1)
 	return exp(param1-0.5)/(1+exp(param1-0.5));
 }
 
-double myVehicleDef::OnRampAddCoef(double ahead_speed, int num_lane_2_rightmost)
+double myVehicleDef::OnRampAddCoef(int num_lane_2_rightmost)
 { 	
 	if(IsSectionSource(this->getIdCurrentSection()))
 		return 1;
@@ -3592,7 +3697,8 @@ int myVehicleDef::getNextSectionRampType
 	(int& next_sec_center_lanes)
 {
 	int sectionid = getIdCurrentSection();		
-	A2KSectionInf sectioninfo = AKIInfNetGetSectionANGInf(sectionid);  
+	A2KSectionInf sectioninfo = *this->sec_inf;
+		//AKIInfNetGetSectionANGInf(sectionid);  
 
 	for(int i=0; i<sectioninfo.nbTurnings;i++)
 	{
@@ -3653,7 +3759,7 @@ double myVehicleDef::getMaxDecInSync()
 //////////////////////////////////////////////////////////////////////////
 bool myVehicleDef::getNoOfVehsOnNextOnRampAccLane()
 {
-	int n_turnings = AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).nbTurnings;
+	int n_turnings = this->sec_inf->nbTurnings;
 	for(int i=0; i<n_turnings;i++)
 	{
 		int aid = AKIInfNetGetIdSectionANGDestinationofTurning(this->getIdCurrentSection(),i);
@@ -3671,10 +3777,22 @@ bool myVehicleDef::getNoOfVehsOnNextOnRampAccLane()
 //////////////////////////////////////////////////////////////////////////
 bool myVehicleDef::PreventSimutaneiousLC()
 {
-	A2SimVehicle *vehUp=NULL;
+	const A2SimVehicle *vehUp=NULL;
+	const A2SimVehicle *vehDown=NULL;	
+	if(getTargetLane() == LEFT)
+	{
+		vehUp = this->left_follower;
+		vehDown = this->left_leader;
+	}
+	else
+	{
+		vehUp = this->right_follower;
+		vehDown = this->right_leader;
+	}
+	/*A2SimVehicle *vehUp=NULL;
 	A2SimVehicle *vehDown=NULL;	
 	getUpDown((const A2SimVehicle *&)vehUp, 
-		(const A2SimVehicle *&)vehDown, getTargetLane(),0);
+		(const A2SimVehicle *&)vehDown, getTargetLane(),0);*/
 	//no up and down vehicles, gap accepted
 	if(vehDown!=NULL && vehDown->isFictitious() ==false)
 	{
@@ -3706,6 +3824,112 @@ void myVehicleDef::addOneStepTransitTime()
 	int temp = this->_smooth_transit_time;
 	this->_smooth_transit_time = temp%
 		((int)(this->getAccSmoothCoef()/AKIGetSimulationStepTime()))+1;
+}
+
+double myVehicleDef::getPolitenessOptional()
+{
+	return this->politeness_optional;
+}
+
+double myVehicleDef::getRandomPolitenessOptional()
+{
+	return random_politeness_optional;
+}
+
+void myVehicleDef::setRandomPolitenessOptional(double param1)
+{
+	random_politeness_optional = param1;
+}
+
+void myVehicleDef::setPolitenessOptional(double param1)
+{
+	this->politeness_optional = param1;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// check if the leader or follower is a LCer
+bool myVehicleDef::ExistNewLCer(int direction)
+{
+	double desire = this->getLaneChangeDesire();
+
+	const A2SimVehicle *vehUp=NULL;
+	const A2SimVehicle *vehDown=NULL;	
+	if(getTargetLane() == LEFT)
+	{
+		vehUp = this->left_follower;
+		vehDown = this->left_leader;
+	}
+	else
+	{
+		vehUp = this->right_follower;
+		vehDown = this->right_leader;
+	}
+
+	/*A2SimVehicle *vehUp=NULL;
+	A2SimVehicle *vehDown=NULL;	
+	getUpDown((const A2SimVehicle *&)vehUp, 
+		(const A2SimVehicle *&)vehDown, direction, 0);*/
+	//no up and down vehicles, gap accepted
+	if ((vehDown == NULL||this==vehDown)&&
+		(vehUp == this || vehUp == NULL))
+		return false;
+	if(vehDown != NULL && this!=vehDown)
+	{
+		if (((myVehicleDef*)vehDown)->getLastLCTarget() == direction)
+		{
+			return true;
+		}
+	}
+	if(vehUp !=  NULL&&this!=vehUp)
+	{
+		if (((myVehicleDef*)vehUp)->getLastLCTarget() == direction)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void myVehicleDef::getAroundSpeed()
+{
+	double d_scan = this->getDLCScanRange();
+	double n_scan = this->getDLCScanNoCars();
+	left_avg_speed_ahead = isLaneChangingPossible(LEFT) ?
+		getAverageSpeedAHead(1, d_scan, n_scan) : 0;
+	right_avg_speed_ahead = isLaneChangingPossible(RIGHT) ?
+		getAverageSpeedAHead(-1, d_scan, n_scan) : 0;
+
+	if(this->getIdCurrentLane() - this->sec_inf->nbSideLanes == 1)
+	{
+		right_avg_speed_ahead = 0;
+	}
+
+	avg_speed_ahead = getAverageSpeedAHead(0, d_scan, n_scan);
+	//if this car is at the rightmost lane or the second right-most lane
+	int num_sidelanes = sec_inf->nbSideLanes;
+		//AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).nbSideLanes;
+	int num_lane_2_rightmost = 
+		this->getIdCurrentLane()-num_sidelanes;
+	if(num_lane_2_rightmost<=2
+		&& isLaneChangingPossible(LEFT) == true)
+		avg_speed_ahead = avg_speed_ahead/OnRampAddCoef(num_lane_2_rightmost);
+
+}
+
+void myVehicleDef::getAroundLeaderFollowers()
+{
+	getUpDown((const A2SimVehicle *&)left_follower, 
+		(const A2SimVehicle *&)left_leader, LEFT, 0);
+
+	getUpDown((const A2SimVehicle *&)right_follower, 
+		(const A2SimVehicle *&)right_leader, RIGHT, 0);
+
+}
+
+void myVehicleDef::getSectionInfo()
+{
+	int sec_id = getIdCurrentSection();
+	sec_inf = &(AKIInfNetGetSectionANGInf(sec_id));
 }
 
 

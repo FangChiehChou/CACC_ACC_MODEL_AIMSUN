@@ -600,6 +600,7 @@ double dmd_generate_section(double time,
 			AKIConvertFromAsciiString( "section_ramp_type");
 		int ramp_type = ((ANGConnGetAttributeValueInt(
 			ANGConnGetAttribute(increase_DLC_close_ramp_str), id)));
+		int lanes = AKIInfNetGetSectionANGInf(id).nbCentralLanes;
 
 		std::vector<int> times = time_next[id];
 		//the lane id in pmes is the opposite of the AIMSUN
@@ -658,9 +659,15 @@ double dmd_generate_section(double time,
 						3600.0/(((double)flows[id][time_index][k])/(double)global_interval*60.0));
 				}
 				double min_headway = 1.2;
-				if (ramp_type == 3) // on ramp
+				if (ramp_type == 3 
+					////&& ECIGetNumberofControls ()>0
+					//&& lanes == 2
+					&& time_index >= 72
+					&& time_index <= 12*9
+					) // on ramp
 				{
-					min_headway = 3;
+					//continue;
+					min_headway = 6;
 				}
 				int new_time = (int)(RandomExpHeadway(min_headway, avg_headway_flow)/acicle+0.5); //add 0.5 is because the (int) always truncate
 				time_next[id][k] = new_time+current_step;
@@ -1030,6 +1037,13 @@ int read_turnings()
 // each source section will need to have a file
 int dmd_create_pems(double ACC_percent, double CACC_percent)
 {
+	//initialize the internal shift
+	int id = ANGConnGetExperimentId();
+	const unsigned short *shift_str = 
+		AKIConvertFromAsciiString( "_field_start_time");
+	interval_shift = ((ANGConnGetAttributeValueInt(
+		ANGConnGetAttribute(shift_str), id)));	
+
 	if(read_pems_flow() == 1)
 		if(read_pems_truck_percentage()==1)
 		{
