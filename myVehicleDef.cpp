@@ -1947,9 +1947,8 @@ void myVehicleDef::updateCoopCf()
 	if(this->CoopRequester != NULL)
 	{
 		double nextPosCoopVeh = this->PosCf(CoopRequester);
-		nextPos = std::min(nextPos,nextPosCoopVeh);
 		//but it will apply a deceleration that is beyond the comfortable
-		double v = 2*(nextPos - this->getPosition()) / delta_t-this->getSpeed();
+		double v = 2*(nextPosCoopVeh - this->getPosition()) / delta_t-this->getSpeed();
 		double acc  = (v-this->getSpeed())/delta_t;
 		double min_dec = CoopRequester->getLCType() == OPTIONAL?this->getComfDecDLC():
 			this->getComfDecRampLC();
@@ -1957,7 +1956,8 @@ void myVehicleDef::updateCoopCf()
 		{
 			v = MAX(0,this->getSpeed()+delta_t*min_dec);
 		}
-		nextPos = this->getPosition()+(v+this->getSpeed())*delta_t/2;
+		nextPosCoopVeh = this->getPosition()+(v+this->getSpeed())*delta_t/2;
+		nextPos = std::min(nextPos,nextPosCoopVeh);
 	}
 	// no requester because
 	else if(this->getRemainLength() < 200)
@@ -3320,6 +3320,10 @@ double myVehicleDef::GippsDecelerationTerm
 		v_after_tau =maxDec
 			*(reaction_time+theta)+
 			sqrt(value_in_sqrt);
+	}
+	else
+	{
+		v_after_tau = v_after_tau;
 	}
 	return v_after_tau;
 }

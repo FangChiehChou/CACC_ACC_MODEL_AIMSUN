@@ -18,7 +18,7 @@ b_f = -3;
 b_e = -3*1.1;
 
 % for newell
-headway = 1.3;
+headway = 1.5;
 jamgap = 1.5; %[m]
 len = 6; %[m]
 
@@ -26,11 +26,11 @@ len = 6; %[m]
 % headway = ...
 %     (v_max/(capacity/3600)-jamgap-len)/v_max;
 
-for i=6:40
+for i=10:40
     speed_newell(i-5)=min(v_max,(i-jamgap-len)/headway);
 end
 
-for i=6:40
+for i=10:40
     speed_gipps(i-5)=min(v_max, ...
         max((tau+theta)/(1/-b_f-1/(-b_e))...
         *(-1+sqrt(1+(2*(i-(len+jamgap))*(1/-b_f-1/(-b_e)))/(tau+theta)^2)),0));
