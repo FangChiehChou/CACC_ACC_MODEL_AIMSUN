@@ -471,12 +471,12 @@ A2SimVehicle *mybehavioralModel::
 		}
 		else
 		{
-			res->alpha = 0.5; //reaction time
+			res->alpha = 0.3; //reaction time
 			res->beta = 1; //jam gap
 			//steps depending on the delta t
 			res->ACF_Steps = 70;
 			res->ACF_Step = 0;
-			res->Relaxation = 0.5;
+			res->Relaxation = 0.3;
 		}
 
 		E = sampleNormalDist((*iter).second.meanE, (*iter).second.devE);

@@ -1880,7 +1880,14 @@ void myVehicleDef::UpdateBeforeLaneChangeCf()
 		this->setRampDecision(ramp_lc_decision);
 		if(ramp_lc_decision == RAMP_DECISION_SLOW_DOWN)
 		{
-			this->BeforeOnRampLcSlowDown();
+			if(this->getLaneChangeDesire() > this->getRampLCSlowDownDesire())
+			{
+				this->BeforeOnRampLcSlowDown();
+			}
+			else
+			{
+				this->updateRegularCf();
+			}
 		}
 		else if(ramp_lc_decision == RAMP_DECISION_FOLLOW)
 		{
@@ -2161,10 +2168,11 @@ void myVehicleDef::BeforeOnRampLcSync()
 		(const A2SimVehicle *&)vehDown, this->getTargetLane(), 0);*/
 	double x_CF_Sync = PosCf(vehDown, 1, beta, alpha, Relaxation);
 
-	double max_accept_dec = getMaxDecInSync();//maximum acceptable deceleration at the current desire level
-	double speed = this->getSpeed()+max_accept_dec*delta_t;
-	double x_CF_Sync_Limit = this->getPosition() + (this->getSpeed()+speed)*delta_t/2; //position based on this most acceptable deceleration
-	x_CF_Sync = MAX(x_CF_Sync, x_CF_Sync_Limit);
+
+	//double max_accept_dec = getMaxDecInSync();//maximum acceptable deceleration at the current desire level
+	//double speed = MAX(0, this->getSpeed()+max_accept_dec*delta_t);
+	//double x_CF_Sync_Limit = this->getPosition() + (this->getSpeed()+speed)*delta_t/2; //position based on this most acceptable deceleration
+	//x_CF_Sync = MAX(x_CF_Sync, x_CF_Sync_Limit);
 
 	double x_CF_NoSync = 0;
 	if(this->leader == NULL)
@@ -2483,8 +2491,8 @@ bool myVehicleDef::NeedDlc()
 	lc_prob = DLCDesire(LEFT);
 	lc_prob_right = DLCDesire(RIGHT);
 
-	if(ExistNewLCer(LEFT)) lc_prob = 0;
-	if(ExistNewLCer(RIGHT)) lc_prob_right = 0;
+	/*if(ExistNewLCer(LEFT)) lc_prob = 0;
+	if(ExistNewLCer(RIGHT)) lc_prob_right = 0;*/
 
 	if(lc_prob_right == 0
 		&&
@@ -3166,7 +3174,43 @@ void myVehicleDef::BeforeDLcSlowDown()
 //////////////////////////////////////////////////////////////////////////
 void myVehicleDef::BeforeDLcSync()
 {
-	this->BeforeOnRampLcSync();
+	//run synchronization based lane change
+	const A2SimVehicle *vehUp=NULL;
+	const A2SimVehicle *vehDown=NULL;	
+	if(getTargetLane() == LEFT)
+	{
+		vehUp = this->left_follower;
+		vehDown = this->left_leader;
+	}
+	else
+	{
+		vehUp = this->right_follower;
+		vehDown = this->right_leader;
+	}
+
+	double x_CF_Sync = PosCf(vehDown, 1, beta, alpha, Relaxation);
+
+
+	double max_accept_dec = 0;//maximum acceptable deceleration at the current desire level
+	double speed = MAX(0, this->getSpeed()+max_accept_dec*delta_t);
+	double x_CF_Sync_Limit = this->getPosition() + (this->getSpeed()+speed)*delta_t/2; //position based on this most acceptable deceleration
+	x_CF_Sync = MAX(x_CF_Sync, x_CF_Sync_Limit);
+
+	double x_CF_NoSync = 0;
+	if(this->leader == NULL)
+	{
+		x_CF_NoSync = PosCf2EndofRamp();
+	}
+	else
+	{
+		x_CF_NoSync = PosCf(this->leader,1,beta,alpha, Relaxation);
+	}
+
+	double x=getPosition(0);
+	
+
+	setNewPosition(MIN(x_CF_NoSync,x_CF_Sync),
+			(MIN(x_CF_NoSync,x_CF_Sync) - x) / delta_t*2-this->getSpeed());
 }
 
 void myVehicleDef::setLaneChangeDesireThrd(double val)
@@ -4092,6 +4136,12 @@ double myVehicleDef::getComfDecDLC()
 void myVehicleDef::setComfDecDLC(double param)
 {
 	this->comf_dec_dlc = -param;
+}
+
+double myVehicleDef::getRampLCSlowDownDesire()
+{
+	return 0.8;
+	return this->ramp_lc_slowdown_desire;
 }
 
 

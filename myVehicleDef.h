@@ -301,6 +301,7 @@ public:
 	double comf_dec_ramplc;
 	double comf_dec_dlc;
 	double freeflowspeed;
+	double ramp_lc_slowdown_desire;
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -365,8 +366,9 @@ public:
 
 	double getDLCScanRange()
 	{
-		double remain_length = getRemainLength();
-		return dLC_scan_range_>remain_length-1?remain_length-1:dLC_scan_range_;
+		/*double remain_length = getRemainLength();
+		return dLC_scan_range_>remain_length-1?remain_length-1:dLC_scan_range_;*/
+		return this->dLC_scan_range_;
 	};
 
 	void setDLCScanRange(double val){dLC_scan_range_=val;};
@@ -525,5 +527,6 @@ public:
 	double getComfDecDLC();
 	void setComfDecDLC(double param);
 	double createFreeFlowSpeed();
+	double getRampLCSlowDownDesire();
 };
 #endif
