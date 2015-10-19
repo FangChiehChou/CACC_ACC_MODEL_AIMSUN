@@ -54,8 +54,9 @@
 #define RAMP_SPEED 25
 #define CREEP_SPEED 20
 
-#define COMF_LEVEL 0.8 //the comfortable level of deceleration
-#define ACCEPT_LEVEL 0.9 //the accepted level of deceleration for on-ramp sync
+#define COMF_LEVEL_DLC 0.8 //the comfortable level of deceleration for DLC
+#define COMF_LEVEL 0.8 //the comfortable level of deceleration for on-ramp slow down decision
+//#define ACCEPT_LEVEL 0.9 //the accepted level of deceleration for on-ramp sync
 #define DANGER_GAP 0.8
 #define MIN_REGAIN_AUTO_SPEED 5
 
@@ -243,7 +244,7 @@ void myVehicleDef::RunNGSIM(bool mode_predetermined)
 bool myVehicleDef::ApplyNGSIMModel() 
 {
 	//int sectionid = getIdCurrentSection();		
-	A2KSectionInf sectioninfo =  *this->sec_inf;
+	A2KSectionInf sectioninfo =  this->sec_inf;
 	if (getapplyACC() == false //this is not a cacc or acc vehicle
 		||isCurrentLaneOnRamp() //this vehicle is on ramp
 		|| this->getIdCurrentSection() == FeederOnRamp //this vehicle is on ramp
@@ -311,7 +312,7 @@ bool myVehicleDef::LetAimsunHandle()
 	else
 	{
 		//int sectionid = getIdCurrentSection();	
-		A2KSectionInf sectioninfo =  *this->sec_inf;
+		A2KSectionInf sectioninfo =  this->sec_inf;
 		//A2KSectionInf sectioninfo = AKIInfNetGetSectionANGInf(sectionid);
 		if(sectioninfo.length-getPosition(0) <= buffer
 			&& sectioninfo.id != END_SECTION)
@@ -374,7 +375,7 @@ void myVehicleDef::RunACCCACC()
 
 	a_U        = getMAXacc();			//a_U>0    
 	a_L        = getMAXdec();			//a_L<0
-	vf         = getFreeFlowSpeed();
+	vf         = freeflowspeed;
 	v          = getSpeed(0);
 	x          = getPosition(0);
 	v_1        = getSpeed(1);
@@ -450,7 +451,7 @@ void myVehicleDef::RunACCCACC()
 	}
 
 	//bound free flow
-	v_des = MIN(v_des, getFreeFlowSpeed());
+	v_des = MIN(v_des, freeflowspeed);
 
 	//bound acceleration and deceleration
 	acceleration = (v_des - v)/delta_t;
@@ -536,7 +537,7 @@ bool myVehicleDef::ResumeMannual()
 
 double myVehicleDef::Safe_Speed()
 {
-	double adjust_coeff = 0.9; //prevent collision. could use COMF_LEVEL. BUT THAT SEEMS TOO SOFT
+	double adjust_coeff = 0.9; //prevent collision. could use getComfDecRampLC. BUT THAT SEEMS TOO SOFT
 	double lead_speed = ((myVehicleDef*)this->leader)->getSpeed();
 	double lead_max_dec = ((myVehicleDef*)this->leader)->getMAXdec();
 	double lead_pos =((myVehicleDef*)this->leader)->getPosition();
@@ -551,7 +552,7 @@ double myVehicleDef::Safe_Speed()
 	double comf_pos = this->getPosition()-this->getSpeed() *this->getSpeed()
 		/(2*this->getMAXdec()*adjust_coeff);
 	/*double comfortable_stop = this->getPosition()+this->getSpeed()*delta_t+
-		0.5*this->getMAXdec()*COMF_LEVEL*delta_t*delta_t;*/
+		0.5*this->getMAXdec()*getComfDecRampLC()*delta_t*delta_t;*/
 	if(comf_pos > low_pos)
 		return this->getSpeed()-1;
 	else 
@@ -675,7 +676,7 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 					this->alpha*getJamGap(), 
 					d_leader, 
 					((myVehicleDef *)vehDown)->getLength(), 
-					getFreeFlowSpeed(), 
+					freeflowspeed, 
 					getSpeed(), 
 					getPosition(),
 					current_pos_down,
@@ -698,7 +699,7 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 					this->alpha*getJamGap(), 
 					d_leader, 
 					((myVehicleDef *)vehDown)->getLength(), 
-					getFreeFlowSpeed(), 
+					freeflowspeed, 
 					getSpeed(), 
 					getPosition(),
 					current_pos_down,
@@ -722,7 +723,7 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 						this->alpha*getJamGap(), 
 						d_leader, 
 						((myVehicleDef *)vehDown)->getLength(), 
-						getFreeFlowSpeed(), 
+						freeflowspeed, 
 						getSpeed(), 
 						getPosition(),
 						current_pos_down,
@@ -732,6 +733,12 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 						Gap_AC_Thrd,
 						desire
 						); // get the acceleration of the current vehicle
+					if(acc_self < 0 
+						&&
+					   getLCType() == OPTIONAL)
+					{
+						Ok_downstream_gap = false;
+					}
 				}
 			}
 		}
@@ -832,6 +839,36 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 					acc_self) == false)
 				{
 					Ok_upstream_gap = false;
+				}
+				else
+				{
+					if(this->getLCType() == OPTIONAL)
+					{
+						double follower_dec = this->AnticipatedAcc(
+							getMAXdec(),
+							getMAXacc(), 
+							getReactionTime()*beta, 
+							up_headway, 
+							getJamGap()*alpha, 
+							d_leader, 
+							this->getLength(), 
+							((myVehicleDef *)vehUp)->getFreeFlowSpeed(), 
+							((myVehicleDef *)vehUp)->getSpeed(), 
+							current_pos_up, 
+							this->getPosition(), 
+							early_pos, 
+							this->getSpeed(), 
+							min_headway,
+							Gap_AC_Thrd,
+							desire
+							);
+						if (follower_dec 
+							< this->getComfDecDLC())
+						{
+							Ok_upstream_gap = false;
+						}
+
+					}
 				}
 			}
 		}
@@ -934,7 +971,7 @@ int myVehicleDef::gapAccepted
 			double new_pos_self = BaseCfModel(getMAXdec(), getMAXacc(), tau*beta, 
 				headway, this->alpha*getJamGap(), d_leader, 
 				((myVehicleDef *)vehDown)->getLength(),
-				getFreeFlowSpeed(), getSpeed(), getPosition(),
+				freeflowspeed, getSpeed(), getPosition(),
 				((myVehicleDef *)vehDown)->getPosition(), 
 				early_pos,
 				((myVehicleDef *)vehDown)->getSpeed(), min_headway);
@@ -954,42 +991,48 @@ int myVehicleDef::gapAccepted
 double myVehicleDef::PosCfSkipGap(const A2SimVehicle* potential_leader, 
 								  bool apply_creep_speed)
 {
-	if(apply_creep_speed)
+	/*if(apply_creep_speed)
 	{
 		PosCfSkipGap(potential_leader);
 	}
 	else
-	{
-		if(potential_leader!=NULL)
+	{*/
+		if(potential_leader!=NULL
+			&&
+			this->getSpeed() >= CREEP_SPEED)
 		{
-			double a_L = this->getMAXdec()*COMF_LEVEL;		//comfortable dec
+			double a_L = getComfDecRampLC();		//comfortable dec
+			if(this->getLCType() == OPTIONAL)
+				a_L = getComfDecDLC();
 			double speed = MAX(0,this->getSpeed()+a_L*delta_t);
+			if(apply_creep_speed)
+				speed = MAX(speed, CREEP_SPEED);
 
 			return this->getPosition() + 
 				(this->getSpeed()+speed)*delta_t/2;
 		}
-		return this->getPosition();
-	}
+		return this->getPosition()+this->getSpeed()*delta_t;
+	//}
 }
 
 //this function returns the position of the vehicle if it slow down with a comfortable deceleration
-double myVehicleDef::PosCfSkipGap(const A2SimVehicle* potential_leader)
-{
-	//apply a comfortable deceleration to a speed that is slightly lower than the the potential leader
-	if(potential_leader!=NULL)
-	{
-		double a_L = this->getMAXdec()*COMF_LEVEL;		//comfortable dec
-		double speed = this->getSpeed()+a_L*delta_t;
-
-		//double target_speed = MAX(0, ((myVehicleDef*)potential_leader)->getSpeed()-5);
-		//speed = MAX(target_speed, speed);
-		
-		speed = MAX(CREEP_SPEED, speed);
-
-		return this->getPosition() + (this->getSpeed()+speed)*delta_t/2;
-	}
-	return this->getPosition();
-}
+//double myVehicleDef::PosCfSkipGap(const A2SimVehicle* potential_leader)
+//{
+//	//apply a comfortable deceleration to a speed that is slightly lower than the the potential leader
+//	if(potential_leader!=NULL)
+//	{
+//		double a_L = this->getMAXdec()*COMF_LEVEL;		//comfortable dec
+//		double speed = this->getSpeed()+a_L*delta_t;
+//
+//		//double target_speed = MAX(0, ((myVehicleDef*)potential_leader)->getSpeed()-5);
+//		//speed = MAX(target_speed, speed);
+//		
+//		speed = MAX(CREEP_SPEED, speed);
+//
+//		return this->getPosition() + (this->getSpeed()+speed)*delta_t/2;
+//	}
+//	return this->getPosition();
+//}
 
 /***************************************************************************************/
 //	cntract() Used in PosCf
@@ -1187,6 +1230,8 @@ double myVehicleDef::BaseCfModel
 
 		// free acc
 		double min_a = maxAcc*(1-v/vf);
+		//when one reduces from a speed that exceeds free flow speed the deceleration should not be too much
+		min_a = MAX(min_a, this->getComfDecDLC());
 
 		double current_acc = (getSpeed(0)-getSpeed(1))/delta_t;
 		double acc_target = MIN(MIN(min_a, newell_a), max_a);
@@ -1294,7 +1339,7 @@ double myVehicleDef::PosCf
     //a_L        = getDeceleration();		//a_L<0
 	a_L        = getMAXdec();			//a_L<0
     jamGap     = getJamGap();
-    vf         = getFreeFlowSpeed();
+    vf         = this->freeflowspeed;
     v          = getSpeed(0);
     x          = getPosition(0);
 
@@ -1565,7 +1610,7 @@ GET_REAL_LEADER:
 	//}
 }
 
-double myVehicleDef::getFreeFlowSpeed()
+double myVehicleDef::createFreeFlowSpeed()
 {
 	//these vehicles on the ramp
 	/*if(this->isCurrentLaneOnRamp()
@@ -1619,6 +1664,63 @@ double myVehicleDef::getFreeFlowSpeed()
 		return v_friction+(single_free-v_friction)*this->getFrictionCoef();
 	}
 	return single_free;
+}
+
+double myVehicleDef::getFreeFlowSpeed()
+{
+	////these vehicles on the ramp
+	///*if(this->isCurrentLaneOnRamp()
+	//	|| this->getIdCurrentSection() == FeederOnRamp
+	//	|| (this->getIdCurrentSection() == END_SECTION && this->getIdCurrentLane()==1 
+	//		&& this->getPosition()<NO_CHANGE_ZONE_LENGTH)
+	//  )
+	//	return RAMP_SPEED;
+	//else
+	//	return this->staticinfo.maxDesiredSpeed/3.6;*/
+
+	//double single_free =  A2SimVehicle::getFreeFlowSpeed();
+
+	////add lane specified speed limit distribution
+	////A2KSectionInf info = AKIInfNetGetSectionANGInf(this->getIdCurrentSection());
+	////int section_type =  this->GetRampType(this->getIdCurrentSection());
+	////if(info.nbCentralLanes == 1 || section_type == TRUE_ON_RAMP || section_type == TRUE_OFF_RAMP)
+	////	return single_free;
+	////double section_limit = info.speedLimit/3.6; //to m/s 
+	////double lane_limit = section_limit;
+	////switch(this->getIdCurrentLane())
+	////{
+	////	case 1:
+	////		lane_limit *= 0.9;
+	////	case 2:
+	////		lane_limit *= 0.95;
+	////	default:
+	////		lane_limit *= 1;
+	////}
+	////single_free = MIN(single_free, lane_limit);
+
+	////for friction we only look a few distance away and a few cars ahead
+	//double d_scan = getDLCScanRange();   
+	//int n_scan = getDLCScanNoCars();   
+	//d_scan = 50; //50 meters
+	//n_scan = 3;  //three cars
+	//double v_left = single_free; 
+	//double v_right = single_free;
+	//if(isLaneChangingPossible(LEFT) == true)
+	//{
+	//	v_left = getAverageSpeedAHead(LEFT, d_scan, n_scan);
+	//}
+	//if(isLaneChangingPossible(RIGHT) == true)
+	//{
+	//	v_right = getAverageSpeedAHead(RIGHT, d_scan, n_scan);
+	//}
+	////consider friction due to the adjacent lanes
+	//double v_friction = MIN(v_right, v_left);
+	//if(v_friction<single_free && v_friction>0)
+	//{
+	//	return v_friction+(single_free-v_friction)*this->getFrictionCoef();
+	//}
+	//return single_free;
+	return this->freeflowspeed;
 }
 
 int myVehicleDef::DetermineLcOrMergeOrCoop()
@@ -1757,7 +1859,10 @@ void myVehicleDef::UpdateBeforeLaneChangeCf()
 		}
 		if(decision == DLC_DECISION_SLOW_DOWN)
 		{
-			this->BeforeDLcSlowDown();
+			// for DLC, we do not slow down instead we just follow the leader normally
+			// in this case, we would naturally let the current gap skip
+			this->updateRegularCf();
+			//this->BeforeDLcSlowDown();
 		}
 		else if (decision == DLC_DECISION_FOLLOW)
 		{
@@ -1810,9 +1915,18 @@ void myVehicleDef::UpdateAfterLaneChangeCf()
 		(1-alpha)/(double)ACF_Steps*(double)ACF_Step+alpha;
 	double new_relaxation = 
 		(1-Relaxation) /(double)ACF_Steps*(double)ACF_Step+Relaxation;
+	if (getLastLCType() == OPTIONAL)
+	{
+		ACF_Step = ACF_Step;
+	}
 	double x_CF = PosCf
 		(this->leader, 1, new_alpha, new_beta, new_relaxation);
+	
+	
+
 	ACF_Step++;	
+
+	
 	setNewPosition(x_CF, 
 		2*(x_CF - this->getPosition()) / delta_t-this->getSpeed());
 	if(ACF_Step >= ACF_Steps)
@@ -1837,9 +1951,11 @@ void myVehicleDef::updateCoopCf()
 		//but it will apply a deceleration that is beyond the comfortable
 		double v = 2*(nextPos - this->getPosition()) / delta_t-this->getSpeed();
 		double acc  = (v-this->getSpeed())/delta_t;
-		if( acc < this->getMAXdec()*COMF_LEVEL)
+		double min_dec = CoopRequester->getLCType() == OPTIONAL?this->getComfDecDLC():
+			this->getComfDecRampLC();
+		if( acc < min_dec)
 		{
-			v = MAX(0,this->getSpeed()+delta_t*acc);
+			v = MAX(0,this->getSpeed()+delta_t*min_dec);
 		}
 		nextPos = this->getPosition()+(v+this->getSpeed())*delta_t/2;
 	}
@@ -2003,7 +2119,7 @@ void myVehicleDef::BeforeOnRampLcSlowDown()
 	/*getUpDown((const A2SimVehicle *&)vehUp, (const A2SimVehicle *&)vehDown, 
 		this->getTargetLane(), 0);*/
 	//now slow down to catch the next gap with a mild deceleration
-	double posSlow = PosCfSkipGap(vehUp);
+	double posSlow = PosCfSkipGap(vehUp, true);
 	//the current leader
 	double posFollowCurrentLeader = 0;	
 	if(this->leader == NULL) //if no leader, then pay attention to the end of the ramp
@@ -2155,7 +2271,7 @@ double myVehicleDef::PosCf2EndofRamp()
 					   this->distance2EndAccLane(), //the distance to the end of the ramp
 					   this->getJamGap()*alpha,
 					   0,4,
-					   this->getFreeFlowSpeed(),this->getSpeed(),this->getPosition(),
+					   freeflowspeed,this->getSpeed(),this->getPosition(),
 					   this->posEndAccLane(),//assume there is a car at the end of the ramp with speed of zero
 					   this->posEndAccLane(), //the position of the car steps earlier
 					   0,
@@ -2173,7 +2289,7 @@ double myVehicleDef::posEndAccLane()
 {
 	/*int secId = this->getIdCurrentSection();
 	A2KSectionInf sectionInfo = AKIInfNetGetSectionANGInf(secId);*/
-	return this->sec_inf->distance_OnRamp;
+	return this->sec_inf.distance_OnRamp;
 }
 
 double myVehicleDef::getLaneChangeDesire()
@@ -2227,7 +2343,7 @@ void myVehicleDef::UpdateLc()
 bool myVehicleDef::NeedRampLc()
 {
 	//int secId = this->getIdCurrentSection();
-	A2KSectionInf sectionInfo = *this->sec_inf;
+	A2KSectionInf sectionInfo = this->sec_inf;
 	//AKIInfNetGetSectionANGInf(secId);
 
 	if(sectionInfo.nbSideLanes<=0)
@@ -2280,15 +2396,12 @@ double myVehicleDef::DLCDesire(double target_lane)
 		return 0;
 
 	double v = this->getSpeed();
+	v = this->avg_speed_ahead;
 	double ant_speed = target_lane == LEFT?this->left_avg_speed_ahead:this->right_avg_speed_ahead;
 	if (target_lane == LEFT
 		&& this->left_leader!=NULL)
 	{
 		ant_speed = MIN(((myVehicleDef*)this->left_leader)->getSpeed(), ant_speed);
-	}
-	else
-	{
-		ant_speed = MIN(((myVehicleDef*)this->right_leader)->getSpeed(), ant_speed);
 	}
 	
 	if(ant_speed < v)
@@ -2302,7 +2415,7 @@ double myVehicleDef::DLCDesire(double target_lane)
 		else
 		{
 			double desire =  MIN(1, (ant_speed-v)/v);
-			if(target_lane = RIGHT)
+			if(target_lane == RIGHT)
 				desire *= this->getRightDLCCoeff();
 			return desire;
 		}
@@ -2311,7 +2424,7 @@ double myVehicleDef::DLCDesire(double target_lane)
 
 double myVehicleDef::GetAdditionalDlcDesire(int target_lane)
 {
-	double vf= getFreeFlowSpeed();
+	double vf= this->freeflowspeed;
 	double d_scan = getDLCScanRange();   // scan maximum 50m ahead
 	int n_scan = getDLCScanNoCars();   // scan maximum 5 vehicles ahead
 	double v_target = isLaneChangingPossible(target_lane) ?
@@ -2895,6 +3008,7 @@ void myVehicleDef::applyLaneChanging
 	A2SimVehicle::applyLaneChanging
 		(vehDown, targetLane, newpos,newspeed);
 	this->setLastLCTime(AKIGetCurrentSimulationTime());
+	setLastLCType(this->getLCType());
 }
 
 //Newtonian equation to position
@@ -3277,11 +3391,11 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 
 	b_estimate = b_estimate*factor;
 	
-	//if(forward == false)  //backward gap
-	//{
-	//	b_estimate = MAX(self_acc, b_estimate);
-	//	b_estimate = MIN(0, b_estimate);
-	//}
+	if(forward == false)  //backward gap
+	{
+		b_estimate = MAX(self_acc, b_estimate);
+		//b_estimate = MIN(0, b_estimate);
+	}
 
 	double minimun_time;
 	double minimun_gap;
@@ -3380,7 +3494,7 @@ double myVehicleDef::PosCf2EndofExitTurning()
 		this->getReactionTime()*beta,
 		distance2End, //the distance to the end of the ramp
 		this->getJamGap()*alpha,0,0,
-		this->getFreeFlowSpeed(),this->getSpeed(),this->getPosition(),
+		freeflowspeed,this->getSpeed(),this->getPosition(),
 		posEnd,//assume there is a car at the end of the ramp with speed of zero
 		posEnd, //the position of the car steps earlier
 		0,
@@ -3504,7 +3618,7 @@ int myVehicleDef::GetOnAccLaneFlow(int next_sec)
 		//avg_speed = &speed;
 	}
 	else{
-		speed = this->getFreeFlowSpeed();
+		speed = freeflowspeed;
 		//avg_speed = &speed;
 	}
 
@@ -3569,7 +3683,7 @@ void myVehicleDef::AjustArrivalVehicle()
 						//determine the equilibrium state regarding the leader
 						//that is when the acceleration equal zero and 
 						//the speed is at its desired speed
-						double v = MIN(info_veh.CurrentSpeed/3.6, this->getFreeFlowSpeed());// be careful, here info_veh speed is in [km/h]
+						double v = MIN(info_veh.CurrentSpeed/3.6, freeflowspeed);// be careful, here info_veh speed is in [km/h]
 						double eq_pos = GetEquPosition(info_veh.CurrentPos,
 							leader_length, v);
 						if(eq_pos<0)
@@ -3613,7 +3727,7 @@ void myVehicleDef::AjustArrivalVehicle()
 	
 	//only one car there and it is itself
 	setNewPosition(this->getPosition(),
-		this->getFreeFlowSpeed());
+		freeflowspeed);
 	setFirstCycleAfterAdjust(true);
 	this->setNewArrivalAdjust(false);
 	
@@ -3697,7 +3811,7 @@ int myVehicleDef::getNextSectionRampType
 	(int& next_sec_center_lanes)
 {
 	int sectionid = getIdCurrentSection();		
-	A2KSectionInf sectioninfo = *this->sec_inf;
+	A2KSectionInf sectioninfo = this->sec_inf;
 		//AKIInfNetGetSectionANGInf(sectionid);  
 
 	for(int i=0; i<sectioninfo.nbTurnings;i++)
@@ -3759,7 +3873,7 @@ double myVehicleDef::getMaxDecInSync()
 //////////////////////////////////////////////////////////////////////////
 bool myVehicleDef::getNoOfVehsOnNextOnRampAccLane()
 {
-	int n_turnings = this->sec_inf->nbTurnings;
+	int n_turnings = this->sec_inf.nbTurnings;
 	for(int i=0; i<n_turnings;i++)
 	{
 		int aid = AKIInfNetGetIdSectionANGDestinationofTurning(this->getIdCurrentSection(),i);
@@ -3892,6 +4006,8 @@ bool myVehicleDef::ExistNewLCer(int direction)
 
 void myVehicleDef::getAroundSpeed()
 {
+	this->freeflowspeed = this->createFreeFlowSpeed();
+	
 	double d_scan = this->getDLCScanRange();
 	double n_scan = this->getDLCScanNoCars();
 	left_avg_speed_ahead = isLaneChangingPossible(LEFT) ?
@@ -3899,19 +4015,31 @@ void myVehicleDef::getAroundSpeed()
 	right_avg_speed_ahead = isLaneChangingPossible(RIGHT) ?
 		getAverageSpeedAHead(-1, d_scan, n_scan) : 0;
 
-	if(this->getIdCurrentLane() - this->sec_inf->nbSideLanes == 1)
+	if(this->getIdCurrentLane() - this->sec_inf.nbSideLanes == 1)
 	{
 		right_avg_speed_ahead = 0;
 	}
 
 	avg_speed_ahead = getAverageSpeedAHead(0, d_scan, n_scan);
+	
+	if(avg_speed_ahead <0)
+		avg_speed_ahead = freeflowspeed;
+	if(left_avg_speed_ahead<0)
+		left_avg_speed_ahead = freeflowspeed;
+	if(right_avg_speed_ahead<0)
+		right_avg_speed_ahead = freeflowspeed;
+
+	
 	//if this car is at the rightmost lane or the second right-most lane
-	int num_sidelanes = sec_inf->nbSideLanes;
+	int num_sidelanes = sec_inf.nbSideLanes;
 		//AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).nbSideLanes;
 	int num_lane_2_rightmost = 
-		this->getIdCurrentLane()-num_sidelanes;
-	if(num_lane_2_rightmost<=2
-		&& isLaneChangingPossible(LEFT) == true)
+		this->getIdCurrentLane() - num_sidelanes;
+	if(
+		num_lane_2_rightmost <= 2
+		&& 
+		isLaneChangingPossible(LEFT) == true
+		)
 		avg_speed_ahead = avg_speed_ahead/OnRampAddCoef(num_lane_2_rightmost);
 
 }
@@ -3929,7 +4057,37 @@ void myVehicleDef::getAroundLeaderFollowers()
 void myVehicleDef::getSectionInfo()
 {
 	int sec_id = getIdCurrentSection();
-	sec_inf = &(AKIInfNetGetSectionANGInf(sec_id));
+	sec_inf = (AKIInfNetGetSectionANGInf(sec_id));
+}
+
+void myVehicleDef::setLastLCType(int type)
+{
+	this->last_lc_type = type;
+}
+
+int myVehicleDef::getLastLCType()
+{
+	return this->last_lc_type;
+}
+
+double myVehicleDef::getComfDecRampLC()
+{
+	return this->comf_dec_ramplc;
+}
+
+void myVehicleDef::setComfDecRampLC(double param)
+{
+	this->comf_dec_ramplc = -param;
+}
+
+double myVehicleDef::getComfDecDLC()
+{
+	return this->comf_dec_dlc;
+}
+
+void myVehicleDef::setComfDecDLC(double param)
+{
+	this->comf_dec_dlc = -param;
 }
 
 

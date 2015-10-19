@@ -182,7 +182,7 @@ public:
 	int getIsFromMCF(){return isFromMCF;};
 	void setMCFtoBCF(int value){MCFtoBCF=value;};
 	int getMCFtoBCF(){return MCFtoBCF;};
-	double PosCfSkipGap(const A2SimVehicle* leader);
+	//double PosCfSkipGap(const A2SimVehicle* leader);
 	double PosCfSkipGap(const A2SimVehicle* potential_leader, bool apply_creep_speed);
 	void cntract(double sample_t, double mag_rate, double e_rate, double a_val, double b_val, 
 				double *int_val, double *int_val_d);
@@ -296,8 +296,11 @@ public:
 	double left_avg_speed_ahead;
 	double avg_speed_ahead;
 	double right_avg_speed_ahead;
-	A2KSectionInf* sec_inf;
-
+	A2KSectionInf sec_inf;
+	int last_lc_type;
+	double comf_dec_ramplc;
+	double comf_dec_dlc;
+	double freeflowspeed;
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -356,7 +359,7 @@ public:
 		
 	double getRemainLength()
 	{
-		return this->sec_inf->length - this->getPosition();
+		return this->sec_inf.length - this->getPosition();
 			//AKIInfNetGetSectionANGInf(this->getIdCurrentSection()).length-this->getPosition();
 	};
 
@@ -515,5 +518,12 @@ public:
 	void getAroundLeaderFollowers();
 	double DLCDesire(double target_lane);
 	void getSectionInfo();
+	void setLastLCType(int type);
+	int getLastLCType();
+	double getComfDecRampLC();
+	void setComfDecRampLC(double param);
+	double getComfDecDLC();
+	void setComfDecDLC(double param);
+	double createFreeFlowSpeed();
 };
 #endif

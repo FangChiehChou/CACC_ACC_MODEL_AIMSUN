@@ -471,12 +471,12 @@ A2SimVehicle *mybehavioralModel::
 		}
 		else
 		{
-			res->alpha = 0.3; //reaction time
-			res->beta = 0.3; //jam gap
+			res->alpha = 0.5; //reaction time
+			res->beta = 1; //jam gap
 			//steps depending on the delta t
-			res->ACF_Steps = 20;
+			res->ACF_Steps = 70;
 			res->ACF_Step = 0;
-			res->Relaxation = 0.3;
+			res->Relaxation = 0.5;
 		}
 
 		E = sampleNormalDist((*iter).second.meanE, (*iter).second.devE);
@@ -575,6 +575,16 @@ A2SimVehicle *mybehavioralModel::
 			AKIConvertFromAsciiString( "penalty_dlc_no_exit");
 		res->setPenaltyDLCNoExitLane((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(penalty_dlc_no_exit_str), exp_id)));
+
+		const unsigned short *comf_dlc_str = 
+			AKIConvertFromAsciiString( "comf_dec_dlc");
+		res->setComfDecDLC((ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(comf_dlc_str), exp_id)));
+
+		const unsigned short *comf_ramplc_str = 
+			AKIConvertFromAsciiString( "comf_dec_ramplc");
+		res->setComfDecRampLC((ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(comf_ramplc_str), exp_id)));
 
 		//set gap reduction factors
 		//forward
