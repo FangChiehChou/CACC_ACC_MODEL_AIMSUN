@@ -3450,15 +3450,15 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 		forward == false)  //backward gap
 	{
 		b_estimate = MAX(self_acc, b_estimate);
-		b_estimate = MIN(b_estimate, 1);
+		//b_estimate = MIN(b_estimate, 1);
 		//b_estimate = MIN(0, b_estimate);
 
 		//for the backward gap, assume the follower would not willing to take 
 		// a deceleration larger than a comfortable rate
-		if(this->getLCType() == OPTIONAL)
+		/*if(this->getLCType() == OPTIONAL)
 		{	
 			maxDec = -1;
-		}
+		}*/
 	}
 
 	double minimun_time;
@@ -3469,7 +3469,8 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 	double time2stationary = -lead_v/b_estimate;//time takes for the leader to stop
 
 	minimun_time = MAX(0, -delta_v/delta_a); // time it takes for the follower to stop to the same velocity of the leader
-	if(delta_a >0 && time2stationary > minimun_time)
+	if(delta_a >0 &&
+		((time2stationary > minimun_time)||b_estimate>=0))
 	{
 		minimun_gap = 
 					x_leader - x - l_leader + 
