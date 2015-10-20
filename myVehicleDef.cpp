@@ -865,7 +865,7 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 						if (follower_dec 
 							< this->getComfDecDLC())
 						{
-							Ok_upstream_gap = false;
+							//Ok_upstream_gap = false;
 						}
 
 					}
@@ -1211,6 +1211,8 @@ double myVehicleDef::BaseCfModel
 		double b_estimate = 
 			getEstimateLeaderDecCoeff()
 			*maxDec;
+		if(this->getVehType() == Truck_Type)
+			b_estimate = -4;
 		double desired_headway = min_headway;
 		double theta = this->getGippsTheta()*reaction_time;
 		
@@ -1229,7 +1231,10 @@ double myVehicleDef::BaseCfModel
 			/(desired_headway/2)));   //Newell original paper Eq. (9)
 
 		// free acc
-		double min_a = maxAcc*(1-v/vf);
+		//double min_a = maxAcc*(1-v/vf);
+		double min_a = maxAcc;
+		if(v>0)
+			 min_a = maxAcc*(1-pow((v/vf),4));
 		//when one reduces from a speed that exceeds free flow speed the deceleration should not be too much
 		min_a = MAX(min_a, this->getComfDecDLC());
 
@@ -3439,7 +3444,10 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 
 	b_estimate = b_estimate*factor;
 	
-	if(forward == false)  //backward gap
+	if(
+		/*this->getLCType() == OPTIONAL
+		&&*/ 
+		forward == false)  //backward gap
 	{
 		b_estimate = MAX(self_acc, b_estimate);
 		//b_estimate = MIN(0, b_estimate);
@@ -3447,12 +3455,12 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 
 	double minimun_time;
 	double minimun_gap;
-	double delta_v = lead_v-v;
-	double delta_a = b_estimate - maxDec;
+	double delta_v = lead_v-v; //leader the faster
+	double delta_a = b_estimate - maxDec;// if delta_a is larger than zero, then it means that the leader's acceleration is larger than the follower
 	double headway = x_leader - x;
-	double time2stationary = -lead_v/b_estimate;
+	double time2stationary = -lead_v/b_estimate;//time takes for the leader to stop
 
-	minimun_time = MAX(0, -delta_v/delta_a);
+	minimun_time = MAX(0, -delta_v/delta_a); // time it takes for the follower to stop to the same velocity of the leader
 	if(delta_a >0 && time2stationary > minimun_time)
 	{
 		minimun_gap = 
