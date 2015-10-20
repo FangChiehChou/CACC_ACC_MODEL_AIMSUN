@@ -262,11 +262,11 @@ void myVehicleDef::UpdateVehicle(double simu_step)
 	this->getSectionInfo();
 
 	delta_t = simu_step;
-	int veh_Id= getId();
-	AKIVehSetAsTracked(veh_Id);
-	this->info = AKIVehTrackedGetInf(veh_Id);
-	this->staticinfo = AKIVehTrackedGetStaticInf(veh_Id);
-	AKIVehSetAsNoTracked(veh_Id);
+	//int veh_Id= getId();
+	//AKIVehSetAsTracked(veh_Id);
+	////this->info = AKIVehTrackedGetInf(veh_Id);
+	//this->staticinfo = AKIVehTrackedGetStaticInf(veh_Id);
+	//AKIVehSetAsNoTracked(veh_Id);
 	// get leader and vehicles on the left/right lane to avoid recalling this function during this update
 	this->leader = this->getLeader();
 
@@ -563,22 +563,24 @@ double myVehicleDef::Safe_Speed()
 
 double myVehicleDef::getMAXacc()
 {
-	double MaxDec = 0.0;
+	/*double MaxDec = 0.0;
 	StaticInfVeh vInfo;
 
 	vInfo = AKIVehGetStaticInf (this->getId());
 	MaxDec = vInfo.maxAcceleration;
-	return MaxDec;
+	return MaxDec;*/
+	return this->staticinfo.maxAcceleration;
 }
 
 double myVehicleDef::getMAXdec()
 {
 	double MaxDec = 0.0;
-	StaticInfVeh vInfo;
+	//StaticInfVeh vInfo;
 
-	vInfo = AKIVehGetStaticInf (this->getId());
-	// MaxDec = vInfo.maxDeceleration;    // default sign
-	MaxDec = (vInfo.maxDeceleration);    // sign changed by XYLu 11_07_14
+	//vInfo = AKIVehGetStaticInf (this->getId());
+	//// MaxDec = vInfo.maxDeceleration;    // default sign
+	//MaxDec = (vInfo.maxDeceleration);    // sign changed by XYLu 11_07_14
+	MaxDec = staticinfo.maxDeceleration;
 	return MaxDec;
 }
 
@@ -1203,14 +1205,18 @@ double myVehicleDef::BaseCfModel
 		||ModelApplied.compare("NGSIM")==0
 		|| true)   //ngsim model is the default if users input error code
 	{	
+		/*if(headway - l_leader<0
+			&& this->getMode() == CF)
+			AKIPrintString();*/
+
 		double maxDec = a_L;
 		double maxAcc = a_U;
 		double reaction_time = tau;
 		//this coefficient is suggested to be larger than 
 		//the maximum dec of the current vehicle for stability purpose
-		double b_estimate = 
+		double b_estimate = MIN(
 			getEstimateLeaderDecCoeff()
-			*maxDec;
+			*maxDec, -5);
 		if(this->getVehType() == Truck_Type)
 			b_estimate = -4;
 		double desired_headway = min_headway;
@@ -3009,6 +3015,14 @@ void myVehicleDef::SetInitialVal()
 {
 	this->setLastLCTime(0);
 	this->_smooth_transit_time = 1;
+
+	int veh_Id= getId();
+	AKIVehSetAsTracked(veh_Id);
+	//this->info = AKIVehTrackedGetInf(veh_Id);
+	this->staticinfo = AKIVehTrackedGetStaticInf(veh_Id);
+	AKIVehSetAsNoTracked(veh_Id);
+
+	//this->staticinfo 
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3450,6 +3464,9 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 		forward == false)  //backward gap
 	{
 		b_estimate = MAX(self_acc, b_estimate);
+		//this prediction is too good
+		//b_estimate = MIN(b_estimate, b_estimate/2);
+
 		//b_estimate = MIN(b_estimate, 1);
 		//b_estimate = MIN(0, b_estimate);
 

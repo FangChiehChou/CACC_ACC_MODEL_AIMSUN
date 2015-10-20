@@ -405,6 +405,7 @@ A2SimVehicle *mybehavioralModel::
 
         std::map<int, A2BehavioralVehData>::const_iterator iter = vehTypeData.find( res->getVehType() );
         double jamGap, E, T, devT, devE, minE, minT;
+		
 
         if( iter == vehTypeData.end() ){
             readVehTypeData( res->getVehType() );
