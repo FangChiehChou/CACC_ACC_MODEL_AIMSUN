@@ -1205,20 +1205,26 @@ double myVehicleDef::BaseCfModel
 		||ModelApplied.compare("NGSIM")==0
 		|| true)   //ngsim model is the default if users input error code
 	{	
-		/*if(headway - l_leader<0
+		char* ch = "Car crash!!!!!";
+		if(headway - l_leader<0
 			&& this->getMode() == CF)
-			AKIPrintString();*/
+			AKIPrintString(ch);
 
 		double maxDec = a_L;
 		double maxAcc = a_U;
 		double reaction_time = tau;
 		//this coefficient is suggested to be larger than 
 		//the maximum dec of the current vehicle for stability purpose
-		double b_estimate = MIN(
+		double b_estimate = getEstimateLeaderDecCoeff()
+			*maxDec;
+		if(this->leader != NULL && leader->isFictitious() == false)
+		{
+			b_estimate = MIN(((myVehicleDef*)leader)->getMAXdec()*getEstimateLeaderDecCoeff(), 
+				b_estimate);
+		}
+		/*double b_estimate = MIN(
 			getEstimateLeaderDecCoeff()
-			*maxDec, -5);
-		if(this->getVehType() == Truck_Type)
-			b_estimate = -4;
+			*maxDec, this->getLeader()->);*/
 		double desired_headway = min_headway;
 		double theta = this->getGippsTheta()*reaction_time;
 		
@@ -1227,14 +1233,21 @@ double myVehicleDef::BaseCfModel
 			l_leader,v,lead_v,b_estimate); 
 		
 		// The maximum speed based on Gipps safety criterion
+		/*if(((v_after_tau - v)/reaction_time)<maxDec)
+		{
+			v_after_tau = v_after_tau;
+		}*/
 		double max_a = MIN(maxAcc, 
-		MAX(maxDec, (v_after_tau-v)/reaction_time));
+			(v_after_tau-v)/reaction_time);		
+
+		if(this->getVehType() == Truck_Type)
+			max_a = MAX(max_a, maxDec);
 
 		// The acceleration based on Newell rule
 		double newell_a = MIN(maxAcc, 
-		MAX(maxDec, 
-			((headway - l_leader - jamGap)/desired_headway-v)
-			/(desired_headway/2)));   //Newell original paper Eq. (9)
+			MAX(maxDec, 
+				((headway - l_leader - jamGap)/desired_headway-v)
+				/(desired_headway/2)));   //Newell original paper Eq. (9)
 
 		// free acc
 		//double min_a = maxAcc*(1-v/vf);
