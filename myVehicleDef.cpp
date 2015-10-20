@@ -3450,7 +3450,15 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 		forward == false)  //backward gap
 	{
 		b_estimate = MAX(self_acc, b_estimate);
+		b_estimate = MIN(b_estimate, 1);
 		//b_estimate = MIN(0, b_estimate);
+
+		//for the backward gap, assume the follower would not willing to take 
+		// a deceleration larger than a comfortable rate
+		if(this->getLCType() == OPTIONAL)
+		{	
+			maxDec = -1;
+		}
 	}
 
 	double minimun_time;
@@ -3481,6 +3489,7 @@ bool myVehicleDef::GippsGap(double maxDec,double reaction_time,double theta,
 			);
 	}
 	minimun_gap -= (v*(reaction_time+theta));
+	minimun_gap -= jamGap;
 
 	if(minimun_gap>0)
 		return true;
