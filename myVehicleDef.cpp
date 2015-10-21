@@ -1377,7 +1377,8 @@ double myVehicleDef::PosCf
 		Has_Leader=1;	
 
 		//if the leader has updated, then use its previous step
-		if (leader->isUpdated())
+		if (leader->isFictitious() == false
+			&& leader->isUpdated())
 			ref_pos_front= leader->getPositionReferenceVeh(1,this,0);	
 		else
 			ref_pos_front= leader->getPositionReferenceVeh(0,this,0);	
@@ -2192,11 +2193,11 @@ void myVehicleDef::BeforeOnRampLcSync()
 		(const A2SimVehicle *&)vehDown, this->getTargetLane(), 0);*/
 	double x_CF_Sync = PosCf(vehDown, 1, beta, alpha, Relaxation);
 
-
-	//double max_accept_dec = getMaxDecInSync();//maximum acceptable deceleration at the current desire level
-	//double speed = MAX(0, this->getSpeed()+max_accept_dec*delta_t);
-	//double x_CF_Sync_Limit = this->getPosition() + (this->getSpeed()+speed)*delta_t/2; //position based on this most acceptable deceleration
-	//x_CF_Sync = MAX(x_CF_Sync, x_CF_Sync_Limit);
+	//for syncing the deceleration is not allowed to beyond the maximum deceleration	
+	double max_accept_dec = this->getMAXdec();//maximum acceptable deceleration at the current desire level
+	double speed = MAX(0, this->getSpeed()+max_accept_dec*delta_t);
+	double x_CF_Sync_Limit = this->getPosition() + (this->getSpeed()+speed)*delta_t/2; //position based on this most acceptable deceleration
+	x_CF_Sync = MAX(x_CF_Sync, x_CF_Sync_Limit);
 
 	double x_CF_NoSync = 0;
 	if(this->leader == NULL)

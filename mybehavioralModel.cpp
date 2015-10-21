@@ -403,7 +403,9 @@ A2SimVehicle *mybehavioralModel::
     if (!isFictitiousVeh) 
 	{
 
-        std::map<int, A2BehavioralVehData>::const_iterator iter = vehTypeData.find( res->getVehType() );
+		int type = res->getVehType();
+		//std::map<int, A2BehavioralVehData>::const_iterator iter = vehTypeData.find( type);
+		std::map<int, A2BehavioralVehData>::const_iterator iter = vehTypeData.find( CAR);
         double jamGap, E, T, devT, devE, minE, minT;
 		
 
