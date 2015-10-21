@@ -508,6 +508,11 @@ A2SimVehicle *mybehavioralModel::
 		res->setDLCScanNoCars(ANGConnGetAttributeValueInt(
 			ANGConnGetAttribute(dis_lookahead_cars_str), exp_id));
 
+		const unsigned short *acc_exp_str = 
+			AKIConvertFromAsciiString( "acc_exponent");
+		res->setAccExp(ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(acc_exp_str), exp_id));
+
 		//lane change desires
 		const unsigned short *lane_change_desire_thrd_str = 
 			AKIConvertFromAsciiString( "lane_change_desire_thrd");

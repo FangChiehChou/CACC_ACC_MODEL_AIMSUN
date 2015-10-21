@@ -302,6 +302,7 @@ public:
 	double comf_dec_dlc;
 	double freeflowspeed;
 	double ramp_lc_slowdown_desire;
+	double acc_exp;
 	void BeforeOnRampLcSlowDown();
 	void BeforeOnRampLcSync();
 	double PosCf2EndofRamp();
@@ -528,5 +529,7 @@ public:
 	void setComfDecDLC(double param);
 	double createFreeFlowSpeed();
 	double getRampLCSlowDownDesire();
+	double getAccExp();
+	void setAccExp(double param1);
 };
 #endif

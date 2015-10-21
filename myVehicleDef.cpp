@@ -1253,7 +1253,7 @@ double myVehicleDef::BaseCfModel
 		//double min_a = maxAcc*(1-v/vf);
 		double min_a = maxAcc;
 		if(v>0)
-			 min_a = maxAcc*(1-pow((v/vf),4));
+			 min_a = maxAcc*(1-pow((v/vf),this->getAccExp()));
 		//when one reduces from a speed that exceeds free flow speed the deceleration should not be too much
 		min_a = MAX(min_a, this->getComfDecDLC());
 
@@ -4190,6 +4190,17 @@ double myVehicleDef::getRampLCSlowDownDesire()
 {
 	return 0.8;
 	return this->ramp_lc_slowdown_desire;
+}
+
+double myVehicleDef::getAccExp()
+{
+	return this->acc_exp;
+}
+
+void myVehicleDef::setAccExp(double param1)
+{
+	param1 = param1 <1?2:param1;
+	this->acc_exp = param1;
 }
 
 
