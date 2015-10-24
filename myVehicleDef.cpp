@@ -69,6 +69,8 @@
 #define OFF_RAMP 2
 #define NO_RAMP 0
 
+#define MIN_DLC_SPEED 5
+
 #define ACC_LANE_LENGTH 250 //Length of on-ramp acceleration lane[m]
 #define FORBID_RAMPCHANGE_ZONE 0 //Length of on-ramp acceleration lane[m]
 
@@ -1000,15 +1002,14 @@ double myVehicleDef::PosCfSkipGap(const A2SimVehicle* potential_leader,
 	else
 	{*/
 		if(potential_leader!=NULL
-			&&
-			this->getSpeed() >= CREEP_SPEED)
+			)
 		{
 			double a_L = getComfDecRampLC();		//comfortable dec
 			if(this->getLCType() == OPTIONAL)
 				a_L = getComfDecDLC();
 			double speed = MAX(0,this->getSpeed()+a_L*delta_t);
 			if(apply_creep_speed)
-				speed = MAX(speed, CREEP_SPEED);
+				speed = MAX(speed, MIN(this->getSpeed(),CREEP_SPEED));
 
 			return this->getPosition() + 
 				(this->getSpeed()+speed)*delta_t/2;
@@ -2194,7 +2195,7 @@ void myVehicleDef::BeforeOnRampLcSync()
 	double x_CF_Sync = PosCf(vehDown, 1, beta, alpha, Relaxation);
 
 	//for syncing the deceleration is not allowed to beyond the maximum deceleration	
-	double max_accept_dec = this->getMAXdec();//maximum acceptable deceleration at the current desire level
+	double max_accept_dec = this->getComfDecRampLC();// this->getMAXdec();//maximum acceptable deceleration at the current desire level
 	double speed = MAX(0, this->getSpeed()+max_accept_dec*delta_t);
 	double x_CF_Sync_Limit = this->getPosition() + (this->getSpeed()+speed)*delta_t/2; //position based on this most acceptable deceleration
 	x_CF_Sync = MAX(x_CF_Sync, x_CF_Sync_Limit);
@@ -2442,12 +2443,16 @@ double myVehicleDef::DLCDesire(double target_lane)
 	else
 	{
 		if(ant_speed - v < MIN_DLC_SPEED_DIFF)
-		{
+		{			
 			return false;
 		}
 		else
 		{
 			double desire =  MIN(1, (ant_speed-v)/v);
+			if(v < MIN_DLC_SPEED)
+			{
+				desire = MIN(1, (ant_speed-v)/MIN_DLC_SPEED);
+			}
 			if(target_lane == RIGHT)
 				desire *= this->getRightDLCCoeff();
 			return desire;
@@ -3277,16 +3282,16 @@ bool myVehicleDef::DisGapAccepted(double a_L, double a_U, double tau,
 								  bool forward,
 								  double acc_self)
 {
-	/*if(this->getMandatoryType() == MANDATORY)
-	{*/
-		/*if(lead_v > v)
+	if(this->getMandatoryType() == MANDATORY)
+	{
+		if(lead_v > v)
 		{
 			if (x_leader-x-l_leader-jamGap>=0)
 			{
 				return true;
 			}	
-		}*/
-	//}
+		}
+	}
 
 	//if this is optional LC; only acc > 0 willl be approved
 	/*if(acc_self <= 0 && this->getMandatoryType() == OPTIONAL)

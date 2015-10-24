@@ -12,15 +12,19 @@
 clear;
 
 v_max = 30;  %[m/s]
-tau = 0.3; 
+tau = 0.5; 
 theta = tau*0.2;
 b_f = -3;
-b_e = b_f*1.3;
+b_e = b_f*1.1;
 
 % for newell
-headway = 1.3;
+headway = 1.2;
 jamgap = 1.5; %[m]
 len = 5; %[m]
+
+capacity  = CapacityNGSIM(v_max, tau, theta, b_f, ...
+    b_e, headway, jamgap, len);
+display(capacity);
 
 % capacity = 2200; % [vphpl]
 % headway = ...
