@@ -12,7 +12,6 @@
 #include <hash_map>
 #include <map>
 
-
 //#define USE_CACC   2 // 1: using DYSu algorithm; 2: use Vicente model
 
 
@@ -94,9 +93,8 @@ public:
 	const A2SimVehicle* left_leader ;
 	const A2SimVehicle* right_follower ;
 	const A2SimVehicle* right_leader ;
-	InfVeh info;
+	//InfVeh info;
 	StaticInfVeh staticinfo;
-	InfVeh leader_info;
 	const A2SimVehicle* getLeader();
 	void RunNGSIM(bool mode_predetermined);
 	void RunACCCACC();
@@ -130,10 +128,6 @@ public:
 	int setMode(int avalue);
 	myVehicleDef* CoopRequester;
 
-	double IX;				// Initial Location of vehicle
-	double IT;				// Initial time of  vehicle
-	double FX;				// Final Location of vehicle >> 4,000m 
-	double FT;				// Final time of vehicle >> 4,000m  
 
 	double CoopDist;
 	int CoopRequesterID;
@@ -229,7 +223,6 @@ public:
 	double beta;
 	bool ShortgapMode;
 	double MaxSpeedDifference;
-	myVehicleDef *lvehicle;
 
 	int ACF_Steps, ACF_Step;
 	double Relaxation;

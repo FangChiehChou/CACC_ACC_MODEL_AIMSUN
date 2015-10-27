@@ -87,14 +87,17 @@ void DisableCertainBehavior()
 	const unsigned short *twolanecfString = AKIConvertFromAsciiString( 
 		"GKExperiment::applyTwoLanesAtt" );
 	ANGConnSetAttributeValueBool(ANGConnGetAttribute( twolanecfString ), exp_id, false);
+	//delete[] twolanecfString;
 
 	const unsigned short *overtakeString = AKIConvertFromAsciiString( 
 		"GKExperiment::overtakeAtt" );
 	ANGConnSetAttributeValueDouble(ANGConnGetAttribute( overtakeString ), exp_id, 1e8);
+	//delete[] overtakeString;
 
 	const unsigned short *recoverString = AKIConvertFromAsciiString( 
 		"GKExperiment::recoverAtt" );
 	ANGConnSetAttributeValueDouble(ANGConnGetAttribute( recoverString ), exp_id, 1e8);
+	//delete[] recoverString;
 }
 
 

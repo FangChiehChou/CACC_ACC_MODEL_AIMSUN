@@ -1,4 +1,5 @@
 #include "myVehicleDef.h"
+
 #include <stdlib.h>
 #include "AKIProxie.h"
 #include "ANGConProxie.h"
@@ -8,6 +9,7 @@
 #include <hash_map>
 #include <algorithm>  
 #include "mybehavioralModel.h"
+#include "vld.h"
 
 #define MAX(a,b)    (((a)>(b)) ? (a) : (b))
 #define MIN(a,b)    (((a)<(b)) ? (a) : (b))
@@ -76,6 +78,10 @@
 
 #define MIN_DLC_SPEED_DIFF 2.34 //5 [mph]
 
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
 double bound(double x,double x_high,double x_low)
 {
 	double b;
@@ -98,7 +104,10 @@ myVehicleDef:: myVehicleDef ( void *handlerVehicle, unsigned short idhandler,boo
 	}
 }
 
-myVehicleDef::~ myVehicleDef (){}
+myVehicleDef::~ myVehicleDef ()
+{
+
+}
 
 bool myVehicleDef::getapplyACC()
 {
@@ -179,6 +188,7 @@ int myVehicleDef::determineDrivingMode()
 				return currentMode;
 		}
 	}
+
 	switch (currentMode)
 	{
 		case CF:
@@ -206,6 +216,7 @@ void myVehicleDef::RunNGSIM(bool mode_predetermined)
 		mode = getMode();
 	else
 		mode = determineDrivingMode();
+	
 	switch(mode)
 	{
 		case CF:                          
@@ -271,8 +282,9 @@ void myVehicleDef::UpdateVehicle(double simu_step)
 	//AKIVehSetAsNoTracked(veh_Id);
 	// get leader and vehicles on the left/right lane to avoid recalling this function during this update
 	this->leader = this->getLeader();
-
+	double current_time = AKIGetCurrentSimulationTime();
 	this->getAroundSpeed();
+	
 	this->getAroundLeaderFollowers();
 
 
@@ -1466,7 +1478,7 @@ double myVehicleDef::PosCf(const A2SimVehicle* leader)
 bool myVehicleDef::NeedLC()
 {
 	ResetDesires();
-	if(this->GetRampType(this->getIdCurrentSection()) == TRUE_ON_RAMP)
+	if(this->GetRampType(this->sec_inf.angId) == TRUE_ON_RAMP)
 		return CombineLCDesires();
 	//discretionary 
 	NeedDlc();
@@ -1669,20 +1681,20 @@ double myVehicleDef::createFreeFlowSpeed()
 	//single_free = MIN(single_free, lane_limit);
 
 	//for friction we only look a few distance away and a few cars ahead
-	double d_scan = getDLCScanRange();   
-	int n_scan = getDLCScanNoCars();   
-	d_scan = 50; //50 meters
-	n_scan = 3;  //three cars
-	double v_left = single_free; 
-	double v_right = single_free;
-	if(isLaneChangingPossible(LEFT) == true)
+	//double d_scan = getDLCScanRange();   
+	//int n_scan = getDLCScanNoCars();   
+	//d_scan = 50; //50 meters
+	//n_scan = 3;  //three cars
+	double v_left = this->left_avg_speed_ahead;//single_free; 
+	double v_right = this->right_avg_speed_ahead;
+	/*if(isLaneChangingPossible(LEFT) == true)
 	{
 		v_left = getAverageSpeedAHead(LEFT, d_scan, n_scan);
 	}
 	if(isLaneChangingPossible(RIGHT) == true)
 	{
 		v_right = getAverageSpeedAHead(RIGHT, d_scan, n_scan);
-	}
+	}*/
 	//consider friction due to the adjacent lanes
 	double v_friction = MIN(v_right, v_left);
 	if(v_friction<single_free && v_friction>0)
@@ -1760,10 +1772,10 @@ int myVehicleDef::DetermineLcOrMergeOrCoop()
 	{
 		return this->setMode(MCF) ;
 	}*/
-	else if(NeedCoop())
+	/*else if(NeedCoop())
 	{
 		return this->setMode(CCF);
-	}
+	}*/
 	else
 		return this->getMode();
 
@@ -1990,7 +2002,7 @@ void myVehicleDef::updateCoopCf()
 			v = MAX(0,this->getSpeed()+delta_t*min_dec);
 		}
 		nextPosCoopVeh = this->getPosition()+(v+this->getSpeed())*delta_t/2;
-		nextPos = std::min(nextPos,nextPosCoopVeh);
+		nextPos = nextPosCoopVeh<nextPos?nextPosCoopVeh:nextPos;// std::min(nextPos,nextPosCoopVeh);
 	}
 	// no requester because
 	else if(this->getRemainLength() < 200)
@@ -2887,6 +2899,7 @@ bool myVehicleDef::CombineLCDesires()
 	if(isCurrentLaneNode() == true) 
 		goto No_Lane_Change;
 
+
 	//four options:
 	//force left right
 	//option left right
@@ -2930,7 +2943,7 @@ bool myVehicleDef::CombineLCDesires()
 			}
 		}
 
-		double desire = std::_cpp_max(left_desire,right_desire);
+		double desire = left_desire>right_desire?left_desire:right_desire;//std::_cpp_max(left_desire,right_desire);
 		int target_lane = 
 			left_desire>right_desire?LEFT:RIGHT;
 
@@ -3656,8 +3669,10 @@ int myVehicleDef::GetRampType(int sec_id)
 {
 	const unsigned short *increase_DLC_close_ramp_str = 
 		AKIConvertFromAsciiString( "section_ramp_type");
-	return ((ANGConnGetAttributeValueInt(
+	int sec_type = ((ANGConnGetAttributeValueInt(
 		ANGConnGetAttribute(increase_DLC_close_ramp_str), sec_id)));
+	delete[] increase_DLC_close_ramp_str;
+	return sec_type;
 
 }
 
@@ -3668,9 +3683,10 @@ bool myVehicleDef::IsSectionSource(int sec_id)
 {
 	const unsigned short *is_section_source_str = 
 		AKIConvertFromAsciiString( "bool_section_source");
-	return ((ANGConnGetAttributeValueBool(
+	 bool temp = ((ANGConnGetAttributeValueBool(
 		ANGConnGetAttribute(is_section_source_str), sec_id)));
-
+	 delete[] is_section_source_str;
+	 return temp;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3734,11 +3750,11 @@ int myVehicleDef::GetOnAccLaneFlow(int next_sec)
 //////////////////////////////////////////////////////////////////////////
 double myVehicleDef::GetEquPosition(double leader_pos, double leader_l, double v)
 {
-	int veh_Id= getId();
+	/*int veh_Id= getId();
 	AKIVehSetAsTracked(veh_Id);
 	this->info = AKIVehTrackedGetInf(veh_Id);
 	this->staticinfo = AKIVehTrackedGetStaticInf(veh_Id);
-	AKIVehSetAsNoTracked(veh_Id);
+	AKIVehSetAsNoTracked(veh_Id);*/
 
 	double desired_headway =  this->getDesireHeadway();
 	double headway = leader_l + this->getJamGap()
@@ -4108,20 +4124,24 @@ bool myVehicleDef::ExistNewLCer(int direction)
 
 void myVehicleDef::getAroundSpeed()
 {
-	this->freeflowspeed = this->createFreeFlowSpeed();
 	
 	double d_scan = this->getDLCScanRange();
 	double n_scan = this->getDLCScanNoCars();
+	left_avg_speed_ahead = 0;
+	right_avg_speed_ahead = 0;
 	left_avg_speed_ahead = isLaneChangingPossible(LEFT) ?
 		getAverageSpeedAHead(1, d_scan, n_scan) : 0;
 	right_avg_speed_ahead = isLaneChangingPossible(RIGHT) ?
 		getAverageSpeedAHead(-1, d_scan, n_scan) : 0;
+
+	this->freeflowspeed = this->createFreeFlowSpeed();
 
 	if(this->getIdCurrentLane() - this->sec_inf.nbSideLanes == 1)
 	{
 		right_avg_speed_ahead = 0;
 	}
 
+	avg_speed_ahead = 0;
 	avg_speed_ahead = getAverageSpeedAHead(0, d_scan, n_scan);
 	
 	if(avg_speed_ahead <0)

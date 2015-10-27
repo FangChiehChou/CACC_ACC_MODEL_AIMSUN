@@ -41,7 +41,7 @@ int AAPIInit()
 	CACC_percent = cacc_percent;
 	//****************
 
-	Init_sim_data_out(acc_percent, cacc_percent);
+	//Init_sim_data_out(acc_percent, cacc_percent);
 
 	//****************Added by Dali Wei modify demand for all slices for generating CACC and ACC penetration rates
 	//dmd_modify_cacc_linear(acc_percent, cacc_percent);
@@ -55,7 +55,7 @@ int AAPIInit()
 	
 
 	//****************
-	init_data_saving(replication,(int)( acc_percent*100),(int)(cacc_percent*100));
+	//init_data_saving(replication,(int)( acc_percent*100),(int)(cacc_percent*100));
 
 	//disable the two-lane car following model and overtaking
 	DisableCertainBehavior();
@@ -83,15 +83,15 @@ int AAPIPostManage(double time, double timeSta, double timTrans, double acicle)
 		//readDetector_s(time-timTrans);  
 		/*if(IsBatchMode()==true)
 		{*/
-			if(save_data(time-timTrans) == QUIT)
+			/*if(save_data(time-timTrans) == QUIT)
 			{
 				AKISetEndSimTime(AKIGetCurrentSimulationTime()+1);
-			}
+			}*/
 		//}
-		else
-		{
-			//save_data(time-timTrans);
-		}
+		//else
+		//{
+		//	//save_data(time-timTrans);
+		//}
 		count++;
 	}
 	
@@ -102,8 +102,8 @@ int AAPIFinish()
 {
 	
 	Finish();
-	finish_data_saving();
-	Finish_sim_data_out();
+	/*finish_data_saving();
+	Finish_sim_data_out();*/
 	/*AKIPrintString("\tFinish");*/
 	
 	return 0;

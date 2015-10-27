@@ -260,7 +260,7 @@
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
-			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
+			OutputDirectory="C:\Program Files\TSS-Transport Simulation Systems\Aimsun 7.0\plugins\aimsun\models"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="1"
@@ -284,7 +284,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\..\include; ..\..\ext\include"
+				AdditionalIncludeDirectories="&quot;C:\Program Files\TSS-Transport Simulation Systems\Aimsun 7.0\programming\Aimsun Micro SDK\ext\include&quot;;&quot;C:\Program Files\TSS-Transport Simulation Systems\Aimsun 7.0\programming\Aimsun Micro SDK\include&quot;"
 				PreprocessorDefinitions="_A2BehavioralModelUtil_DLL,_WIN32, _A2KERNEL_DEF"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -306,7 +306,7 @@
 				AdditionalDependencies="a2kernel7.lib"
 				OutputFile="$(OutDir)\mybehavioralModel.dll"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="..\..\lib;..\..\ext\lib"
+				AdditionalLibraryDirectories="&quot;C:\Program Files\TSS-Transport Simulation Systems\Aimsun 7.0\programming\Aimsun Micro SDK\ext\lib&quot;;&quot;C:\Program Files\TSS-Transport Simulation Systems\Aimsun 7.0\programming\Aimsun Micro SDK\lib&quot;;..\..\ext\lib"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"

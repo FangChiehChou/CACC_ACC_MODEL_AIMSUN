@@ -122,14 +122,17 @@ void read_precentage(double &acc_percent, double &cacc_percent)
 	const unsigned short *CACC_PercentString = AKIConvertFromAsciiString( 
 		"GKExperiment::CACC_Percent");
 	cacc_percent = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( CACC_PercentString ), expriment_id );
+	////delete[] CACC_PercentString;
 
 	const unsigned short *ACC_PercentString = AKIConvertFromAsciiString( 
 		"GKExperiment::ACC_Percent");
 	acc_percent = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( ACC_PercentString ), expriment_id );
+	////delete[] ACC_PercentString;
 
 	const unsigned short *simStepAtt = AKIConvertFromAsciiString( 
 		"GKExperiment::simStepAtt");
 	ANGConnSetAttributeValueDouble( ANGConnGetAttribute( simStepAtt ), expriment_id ,0.1);
+	////delete[] simStepAtt;
 
 }
 
@@ -142,18 +145,21 @@ void read_volumn(int &mainlane, int &on_ramp, int &off_ramp)
 		"through_flow");
 	mainlane = (int)ANGConnGetAttributeValueDouble
 		( ANGConnGetAttribute( MAINLANE_PercentString ), exp_id );
+	//delete[] MAINLANE_PercentString;
 
 	const unsigned short *on_RAMP_PercentString = 
 		AKIConvertFromAsciiString( 
 		"on_ramp_flow");
 	on_ramp = (int)ANGConnGetAttributeValueDouble
 		( ANGConnGetAttribute(on_RAMP_PercentString ), exp_id );
+	//delete[] on_RAMP_PercentString;
 
 	const unsigned short *off_RAMP_PercentString = 
 		AKIConvertFromAsciiString( 
 		"off_ramp_flow");
 	off_ramp = (int)ANGConnGetAttributeValueDouble
 		( ANGConnGetAttribute(off_RAMP_PercentString ), exp_id );
+	//delete[] off_RAMP_PercentString;
 
 	/*char config_file[len_str];
 	sprintf_s(config_file,len_str, "C:\\CACC_Simu_Data\\config.txt",replication);	
@@ -213,10 +219,12 @@ double Lane_Capacity()
 	double avg_headway_time = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( avg_headway_String ), Car_Type);
+	//delete[] avg_headway_String;
 
 	const unsigned short *meanJamString = AKIConvertFromAsciiString( 
 		"GDrivingSimPluging::GKVehicle::Jam Gap Mean" );
 	double meanJam = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( meanJamString ), Car_Type );
+	//delete[] meanJamString;
 
 	return FREE_FLOW_SPEED/(meanJam+4.0+FREE_FLOW_SPEED*avg_headway_time)*3600;
 }
@@ -316,18 +324,21 @@ bool ResetVolumeFromFile()
 			"through_flow");
 		ANGConnSetAttributeValueDouble
 			( ANGConnGetAttribute( MAINLANE_PercentString ), exp_id, through );
+		//delete[] MAINLANE_PercentString;
 
 		const unsigned short *on_RAMP_PercentString = 
 			AKIConvertFromAsciiString( 
 			"on_ramp_flow");
 		ANGConnSetAttributeValueDouble
 			( ANGConnGetAttribute(on_RAMP_PercentString ), exp_id, on_ramp );
+		//delete[] on_RAMP_PercentString;
 
 		const unsigned short *off_RAMP_PercentString = 
 			AKIConvertFromAsciiString( 
 			"off_ramp_flow");
 		ANGConnSetAttributeValueDouble
 			( ANGConnGetAttribute(off_RAMP_PercentString ), exp_id, off_ramp );
+		//delete[] off_RAMP_PercentString;
 		
 	}
 	catch(int e)
@@ -601,6 +612,7 @@ double dmd_generate_section(double time,
 		int ramp_type = ((ANGConnGetAttributeValueInt(
 			ANGConnGetAttribute(increase_DLC_close_ramp_str), id)));
 		int lanes = AKIInfNetGetSectionANGInf(id).nbCentralLanes;
+		////delete[] increase_DLC_close_ramp_str;
 
 		std::vector<int> times = time_next[id];
 		//the lane id in pmes is the opposite of the AIMSUN
@@ -644,7 +656,10 @@ double dmd_generate_section(double time,
 				}
 
 				int res = 
-					AKIPutVehTrafficFlow(id,times.size()-k,AKIVehGetVehTypeInternalPosition(veh_type),0,0,turningid,false);				
+					AKIPutVehTrafficFlow(
+					id,times.size()-k,
+					AKIVehGetVehTypeInternalPosition(veh_type),0,0,
+					turningid,false);				
 				
 				if(k==0)
 					k=0;
@@ -1043,6 +1058,8 @@ int dmd_create_pems(double ACC_percent, double CACC_percent)
 		AKIConvertFromAsciiString( "_field_start_time");
 	interval_shift = ((ANGConnGetAttributeValueInt(
 		ANGConnGetAttribute(shift_str), id)));	
+	////delete[] shift_str;
+	shift_str = 0;
 
 	if(read_pems_flow() == 1)
 		if(read_pems_truck_percentage()==1)
