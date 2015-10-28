@@ -55,6 +55,7 @@
 #define END_OF_RAMP 1657 //ASSUME THE EFFECTIVE RAMP LENGTH = 300 meters
 #define RAMP_SPEED 25
 #define CREEP_SPEED 20
+#define SYNC_CREEP_SPEED 2.23 // = 5 mph
 
 #define COMF_LEVEL_DLC 0.8 //the comfortable level of deceleration for DLC
 #define COMF_LEVEL 0.8 //the comfortable level of deceleration for on-ramp slow down decision
@@ -1308,6 +1309,23 @@ double myVehicleDef::BaseCfModel
 	return x_CF;
 }
 
+void myVehicleDef::getGapHeadwayLeader(
+	double& gap,
+	double& headway,
+	double& l_leader,
+	double& ref_pos_front)
+{
+	if (leader->isFictitious() == false
+		&& leader->isUpdated())
+		ref_pos_front= leader->getPositionReferenceVeh(1,this,0);	
+	else
+		ref_pos_front= leader->getPositionReferenceVeh(0,this,0);	
+
+	l_leader = leader->getLength();
+	headway = ref_pos_front;
+	gap=headway-l_leader;
+}
+
 //----------------------------------------------------------------------------------------------------------
 // Car-following functions
 //----------------------------------------------------------------------------------------------------------
@@ -1389,6 +1407,12 @@ double myVehicleDef::PosCf
 	{
 		Has_Leader=1;	
 
+		/*getGapHeadwayLeader(
+			gap,
+			headway,
+			l_leader,
+			ref_pos_front
+			);*/
 		//if the leader has updated, then use its previous step
 		if (leader->isFictitious() == false
 			&& leader->isUpdated())
@@ -1525,9 +1549,43 @@ void myVehicleDef::setNewPosition(double pos,double velocity)
 	if(velocity<0)
 	{
 		velocity = 0;
-		pos = this->getPosition()+this->getSpeed()/2*delta_t;
 	}
+	pos = this->getPosition()+this->getSpeed()/2*delta_t;
+	
+	if(this->leader != NULL)
+	{
+		CrashAvoidancePosition(velocity, pos);
+	}
+
 	A2SimVehicle::setNewPosition(pos,MAX(velocity,0));
+}
+
+void myVehicleDef::CrashAvoidancePosition(double& velocity,
+										  double& pos)
+{
+	if(this->leader!=NULL
+		&&
+		this->getNewArrivalAdjust() == false)
+	{
+		double gap = 0;
+		double headway = 0;
+		double l_leader = 0;
+		double ref_pos_front = 0;
+		getGapHeadwayLeader(
+			gap,
+			headway,
+			l_leader,
+			ref_pos_front
+			);
+		if(pos >= ref_pos_front + this->getPosition())
+		{
+			char* ch = "Avoid Crash!!!!!";
+			if(headway - l_leader<0
+				&& this->getMode() == CF)
+				AKIPrintString(ch);
+			pos = ref_pos_front - 0.1;
+		}
+	}
 }
 
 
@@ -1768,14 +1826,14 @@ int myVehicleDef::DetermineLcOrMergeOrCoop()
 	{
 		return this->setMode(BCF);
 	}
-	/*else if (NeedMCF()!=0)
+	else if (NeedMCF()!=0)
 	{
 		return this->setMode(MCF) ;
-	}*/
-	/*else if(NeedCoop())
+	}
+	else if(NeedCoop())
 	{
 		return this->setMode(CCF);
-	}*/
+	}
 	else
 		return this->getMode();
 
@@ -2209,7 +2267,12 @@ void myVehicleDef::BeforeOnRampLcSync()
 	//for syncing the deceleration is not allowed to beyond the maximum deceleration	
 	double max_accept_dec = this->getComfDecRampLC();// this->getMAXdec();//maximum acceptable deceleration at the current desire level
 	double speed = MAX(0, this->getSpeed()+max_accept_dec*delta_t);
+	if(speed < SYNC_CREEP_SPEED)
+	{
+		speed = SYNC_CREEP_SPEED;
+	}
 	double x_CF_Sync_Limit = this->getPosition() + (this->getSpeed()+speed)*delta_t/2; //position based on this most acceptable deceleration
+			
 	x_CF_Sync = MAX(x_CF_Sync, x_CF_Sync_Limit);
 
 	double x_CF_NoSync = 0;
@@ -2449,12 +2512,13 @@ double myVehicleDef::DLCDesire(double target_lane)
 	{
 		ant_speed = MIN(((myVehicleDef*)this->left_leader)->getSpeed(), ant_speed);
 	}
-	
-	if(ant_speed < v)
+
+	double tempspeed = MAX(ant_speed, MIN_DLC_SPEED);
+	if(ant_speed < tempspeed)
 		return 0;
 	else
 	{
-		if(ant_speed - v < MIN_DLC_SPEED_DIFF)
+		/*if(ant_speed - v < MIN_DLC_SPEED_DIFF)
 		{			
 			return false;
 		}
@@ -2468,7 +2532,11 @@ double myVehicleDef::DLCDesire(double target_lane)
 			if(target_lane == RIGHT)
 				desire *= this->getRightDLCCoeff();
 			return desire;
-		}
+		}*/
+
+		double desire = MIN(1, (ant_speed-tempspeed)/tempspeed);
+		desire = MAX(0, desire);
+		return desire;
 	}
 }
 
@@ -3136,7 +3204,8 @@ double myVehicleDef::getPastPositionReferenceVehs
 
 // override the base class to automatically include state
 // this can be used only for the current states
-double myVehicleDef::getPositionReferenceVeh(myVehicleDef* ref_veh)
+double myVehicleDef::getPositionReferenceVeh
+	(myVehicleDef* ref_veh)
 {
 	int ref_state = ref_veh->isUpdated()?1:0;
 	int this_state = isUpdated()?1:0;

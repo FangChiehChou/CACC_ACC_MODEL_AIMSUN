@@ -524,5 +524,11 @@ public:
 	double getRampLCSlowDownDesire();
 	double getAccExp();
 	void setAccExp(double param1);
+	void CrashAvoidancePosition(double& velocity,
+		double& pos);
+	void getGapHeadwayLeader( double& gap, 
+		double& headway, 
+		double& l_leader, 
+		double& ref_pos_front);
 };
 #endif

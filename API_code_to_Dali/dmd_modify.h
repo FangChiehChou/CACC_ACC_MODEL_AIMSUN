@@ -38,7 +38,7 @@ std::map<int,int> orgin_section; // the section that connects the origin
 double global_acc = 0;
 double global_cacc = 0;
 int global_interval = 0; //minutes
-int interval_shift = 13;//in hours
+int interval_shift = 11;//in hours
 
 int dmd_modify(double T)
 {
@@ -122,17 +122,17 @@ void read_precentage(double &acc_percent, double &cacc_percent)
 	const unsigned short *CACC_PercentString = AKIConvertFromAsciiString( 
 		"GKExperiment::CACC_Percent");
 	cacc_percent = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( CACC_PercentString ), expriment_id );
-	////delete[] CACC_PercentString;
+	//delete[] CACC_PercentString;
 
 	const unsigned short *ACC_PercentString = AKIConvertFromAsciiString( 
 		"GKExperiment::ACC_Percent");
 	acc_percent = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( ACC_PercentString ), expriment_id );
-	////delete[] ACC_PercentString;
+	//delete[] ACC_PercentString;
 
 	const unsigned short *simStepAtt = AKIConvertFromAsciiString( 
 		"GKExperiment::simStepAtt");
 	ANGConnSetAttributeValueDouble( ANGConnGetAttribute( simStepAtt ), expriment_id ,0.1);
-	////delete[] simStepAtt;
+	//delete[] simStepAtt;
 
 }
 
@@ -607,12 +607,13 @@ double dmd_generate_section(double time,
 		//section id
 		int id = iterator->first;
 
-		const unsigned short *increase_DLC_close_ramp_str = 
+		/*const unsigned short *increase_DLC_close_ramp_str = 
 			AKIConvertFromAsciiString( "section_ramp_type");
 		int ramp_type = ((ANGConnGetAttributeValueInt(
 			ANGConnGetAttribute(increase_DLC_close_ramp_str), id)));
-		int lanes = AKIInfNetGetSectionANGInf(id).nbCentralLanes;
-		////delete[] increase_DLC_close_ramp_str;
+		delete [] increase_DLC_close_ramp_str;*/
+		//int lanes = AKIInfNetGetSectionANGInf(id).nbCentralLanes;
+		//delete[] increase_DLC_close_ramp_str;
 
 		std::vector<int> times = time_next[id];
 		//the lane id in pmes is the opposite of the AIMSUN
@@ -674,16 +675,16 @@ double dmd_generate_section(double time,
 						3600.0/(((double)flows[id][time_index][k])/(double)global_interval*60.0));
 				}
 				double min_headway = 1.2;
-				if (ramp_type == 3 
-					////&& ECIGetNumberofControls ()>0
-					//&& lanes == 2
-					&& time_index >= 72
-					&& time_index <= 12*9
-					) // on ramp
-				{
-					//continue;
-					min_headway = 6;
-				}
+				//if (ramp_type == 3 
+				//	////&& ECIGetNumberofControls ()>0
+				//	//&& lanes == 2
+				//	&& time_index >= 72
+				//	&& time_index <= 12*9
+				//	) // on ramp
+				//{
+				//	//continue;
+				//	min_headway = 6;
+				//}
 				int new_time = (int)(RandomExpHeadway(min_headway, avg_headway_flow)/acicle+0.5); //add 0.5 is because the (int) always truncate
 				time_next[id][k] = new_time+current_step;
 			}
@@ -1058,7 +1059,7 @@ int dmd_create_pems(double ACC_percent, double CACC_percent)
 		AKIConvertFromAsciiString( "_field_start_time");
 	interval_shift = ((ANGConnGetAttributeValueInt(
 		ANGConnGetAttribute(shift_str), id)));	
-	////delete[] shift_str;
+	//delete[] shift_str;
 	shift_str = 0;
 
 	if(read_pems_flow() == 1)
