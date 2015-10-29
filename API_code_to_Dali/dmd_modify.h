@@ -1059,6 +1059,8 @@ int dmd_create_pems(double ACC_percent, double CACC_percent)
 		AKIConvertFromAsciiString( "_field_start_time");
 	interval_shift = ((ANGConnGetAttributeValueInt(
 		ANGConnGetAttribute(shift_str), id)));	
+	//delete[] shift_str;
+	shift_str = 0;
 
 	if(read_pems_flow() == 1)
 		if(read_pems_truck_percentage()==1)

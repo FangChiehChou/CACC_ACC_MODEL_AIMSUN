@@ -72,7 +72,7 @@
 #define OFF_RAMP 2
 #define NO_RAMP 0
 
-#define MIN_DLC_SPEED 2.34
+#define MIN_DLC_SPEED 5
 
 #define ACC_LANE_LENGTH 250 //Length of on-ramp acceleration lane[m]
 #define FORBID_RAMPCHANGE_ZONE 0 //Length of on-ramp acceleration lane[m]
@@ -2513,7 +2513,7 @@ double myVehicleDef::DLCDesire(double target_lane)
 		ant_speed = MIN(((myVehicleDef*)this->left_leader)->getSpeed(), ant_speed);
 	}
 
-	double tempspeed = MAX(v, MIN_DLC_SPEED);
+	double tempspeed = MAX(ant_speed, MIN_DLC_SPEED);
 	if(ant_speed < tempspeed)
 		return 0;
 	else
@@ -2536,8 +2536,6 @@ double myVehicleDef::DLCDesire(double target_lane)
 
 		double desire = MIN(1, (ant_speed-tempspeed)/tempspeed);
 		desire = MAX(0, desire);
-		if(target_lane == RIGHT)
-			desire *= this->getRightDLCCoeff();
 		return desire;
 	}
 }
@@ -3742,9 +3740,7 @@ int myVehicleDef::GetRampType(int sec_id)
 		AKIConvertFromAsciiString( "section_ramp_type");
 	int sec_type = ((ANGConnGetAttributeValueInt(
 		ANGConnGetAttribute(increase_DLC_close_ramp_str), sec_id)));
-#ifdef RELEASE
 	delete[] increase_DLC_close_ramp_str;
-#endif
 	return sec_type;
 
 }
@@ -3758,9 +3754,7 @@ bool myVehicleDef::IsSectionSource(int sec_id)
 		AKIConvertFromAsciiString( "bool_section_source");
 	 bool temp = ((ANGConnGetAttributeValueBool(
 		ANGConnGetAttribute(is_section_source_str), sec_id)));
-#ifdef RELEASE
 	 delete[] is_section_source_str;
-#endif
 	 return temp;
 }
 
