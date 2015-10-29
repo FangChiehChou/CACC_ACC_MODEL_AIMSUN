@@ -231,3 +231,8 @@ $RECYCLE.BIN/
 *.lnk
 API_code_to_Dali/AAPI_D.dll
 API_code_to_Dali/AAPI_D.dll
+*.lck
+Network/Four_Lane_Merge/CalibrationNetwork_Afternoon_NewGeometry2.ang.lck
+*.lck
+*.lck
+Network/Four_Lane_Merge/CalibrationNetwork_Morning_NewGeometry2.ang

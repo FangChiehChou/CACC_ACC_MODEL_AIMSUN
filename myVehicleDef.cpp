@@ -61,7 +61,7 @@
 #define COMF_LEVEL 0.8 //the comfortable level of deceleration for on-ramp slow down decision
 //#define ACCEPT_LEVEL 0.9 //the accepted level of deceleration for on-ramp sync
 #define DANGER_GAP 0.8
-#define MIN_REGAIN_AUTO_SPEED 5
+#define MIN_REGAIN_AUTO_SPEED 2.3
 
 #define ACC_BASED_MODEL 1
 #define GAP_BASED_MODEL 0
@@ -72,7 +72,7 @@
 #define OFF_RAMP 2
 #define NO_RAMP 0
 
-#define MIN_DLC_SPEED 5
+#define MIN_DLC_SPEED 2.3
 
 #define ACC_LANE_LENGTH 250 //Length of on-ramp acceleration lane[m]
 #define FORBID_RAMPCHANGE_ZONE 0 //Length of on-ramp acceleration lane[m]
@@ -2513,7 +2513,7 @@ double myVehicleDef::DLCDesire(double target_lane)
 		ant_speed = MIN(((myVehicleDef*)this->left_leader)->getSpeed(), ant_speed);
 	}
 
-	double tempspeed = MAX(ant_speed, MIN_DLC_SPEED);
+	double tempspeed = MAX(v, MIN_DLC_SPEED);
 	if(ant_speed < tempspeed)
 		return 0;
 	else
@@ -2536,6 +2536,8 @@ double myVehicleDef::DLCDesire(double target_lane)
 
 		double desire = MIN(1, (ant_speed-tempspeed)/tempspeed);
 		desire = MAX(0, desire);
+		if(target_lane == RIGHT)
+			desire *= this->getRightDLCCoeff();
 		return desire;
 	}
 }
