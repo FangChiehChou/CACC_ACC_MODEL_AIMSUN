@@ -90,7 +90,7 @@ int AAPIPostManage(double time, double timeSta, double timTrans, double acicle)
 		//}
 		//else
 		{
-			save_data(time-timTrans);
+			//save_data(time-timTrans);
 		}
 		count++;
 	}

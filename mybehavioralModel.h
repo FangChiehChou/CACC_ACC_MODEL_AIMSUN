@@ -47,6 +47,7 @@ public:
 	double friction;
 	double politeness_optional;
 };
+ 
 
 
 class A2BEHAVIORALEXPORT mybehavioralModel: public A2BehavioralModel{
@@ -79,7 +80,15 @@ public:
 	std::string ReadModel();
 	int ReadGapModel(int exp_id);
 	int UpdateLatestArrival(int vid, int secid, int lane_id);
+	std::vector<std::string> split(const std::string &s, char delim);
+	std::vector<std::string>& split(const std::string &s, char delim, std::vector<std::string> &elems);
+	void ReadExternalParameters();
+	void PrintString(std::string key_value);
+	void SetExternalParameters();
 	bool IsPrintCF;
+
+	//external parameter hashmap
+	std::map<std::string, double> hashmap;
 
 	/*void CheckorCreateDirs(int replication, int acc, int cacc);
 
