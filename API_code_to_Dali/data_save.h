@@ -201,10 +201,18 @@ int open_detector(char *data_saving, unsigned int replic, int acc_percent, int c
 	
 	if (use_RM == 0)
 	{
+		std::ifstream infile("C:\\CACC_Simu_Data\\ParameterSet.txt");
+		std::string line = "";
+		if(infile.is_open() == true)
+		{
+			std::getline(infile, line);
+			std::getline(infile, line);//ignore the first line
+		}
+		infile.close();
+
 		if(IsBatchMode() == false)
 		{
-			sprintf_s(data_saving,len_str,"C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\detector_run.txt"
-				,acc_percent, cacc_percent, replic);
+			sprintf_s(data_saving,len_str,"C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\", acc_percent, cacc_percent, replic);
 		}
 		else
 		{	
@@ -214,6 +222,11 @@ int open_detector(char *data_saving, unsigned int replic, int acc_percent, int c
 			read_volumn(total_through,on_ramp,off_ramp);
 			sprintf_s(data_saving,len_str,"C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\detector_run_%u_%u_%u.txt"
 				,acc_percent, cacc_percent, replic, on_ramp,total_through,off_ramp);			
+		}
+		if(line !="")
+		{
+			sprintf_s(data_saving, len_str, "%s%s\\",data_saving, line.c_str());
+			sprintf_s(data_saving, len_str, "%s\\detector_run.txt", data_saving);
 		}
 	}
 
