@@ -223,6 +223,7 @@ int open_detector(char *data_saving, unsigned int replic, int acc_percent, int c
 			sprintf_s(data_saving,len_str,"C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\detector_run_%u_%u_%u.txt"
 				,acc_percent, cacc_percent, replic, on_ramp,total_through,off_ramp);			
 		}
+		// put extra path to indicate the parameters
 		if(line !="")
 		{
 			sprintf_s(data_saving, len_str, "%s%s\\",data_saving, line.c_str());

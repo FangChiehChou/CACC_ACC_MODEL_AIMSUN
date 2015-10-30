@@ -1069,6 +1069,8 @@ int dmd_create_pems(double ACC_percent, double CACC_percent)
 				if(create_nexttime() == 1)
 					return 1;
 		}
+
+	return 0;
 }
 
 

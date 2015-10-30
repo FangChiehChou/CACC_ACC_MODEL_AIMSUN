@@ -52,7 +52,11 @@ int AAPIInit()
 	modify_section_cooperation(coop);*/
 	
 	//read direct outputs from the pems dataset and transfer it into states
-	dmd_create_pems(acc_percent, cacc_percent);
+	if(dmd_create_pems(acc_percent, cacc_percent)!=1)
+	{
+		AAPIUnLoad();
+		return 0;
+	}
 	
 
 	//****************
