@@ -44,15 +44,18 @@ namespace BatchRun
             for (int i = 0; i < res.Count; i++)
             {
                 string line = "";
+                string foldername = "";
                 for (int j = 0; j < Ranges.Range.Count; j++)
                 {
                     line += System.Convert.ToString(Ranges.Range[j].name)
                         + ":"
                         + res[i][j].ToString()
                         + ",";
+                    foldername += res[i][j].ToString();
                 }
                 System.IO.StreamWriter tempfile = new System.IO.StreamWriter("c:\\CACC_Simu_Data\\ParameterSet.txt", false);
                 tempfile.WriteLine(line);
+                tempfile.WriteLine(foldername.Replace(".","_"));
                 tempfile.Close();
 
                 System.IO.StreamWriter newfile =

@@ -79,7 +79,15 @@ public:
 	std::string ReadModel();
 	int ReadGapModel(int exp_id);
 	int UpdateLatestArrival(int vid, int secid, int lane_id);
+	
+	void ReadExternalParameters();
+	void PrintString(std::string key_value);
+	void SetExternalParameters();
+	
 	bool IsPrintCF;
+
+	//external parameter hashmap
+	std::map<std::string, double> hashmap;
 
 	/*void CheckorCreateDirs(int replication, int acc, int cacc);
 

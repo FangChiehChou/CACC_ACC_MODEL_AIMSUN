@@ -8,6 +8,10 @@
 #include <windows.h>
 #include <sys/stat.h>
 #include <direct.h>
+#include <fstream>      // std::ifstream
+#include <algorithm>    // std::find
+#include <stdlib.h>
+#include <iostream>
 FILE *dbg_f, *dmd_f, *rm_f,  *sec_outfile, *pp, *cfg_file; //*det_outfile,
 
 bool dirExists(const std::string& dirName_in)
@@ -52,11 +56,23 @@ void createdetector(int replication, int acc, int cacc)
  	}
 }
 
-void CheckorCreateDirs(int replication, int acc, int cacc)
+void createparamterbase(int replication, int acc, int cacc, std::string paramtersets)
+{
+	char str_tmp2[len_str] = "a"; 
+	sprintf_s(str_tmp2,len_str, "C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\detector\\%s", acc, cacc, replication, paramtersets.c_str());
+	if (dirExists(str_tmp2) == false)
+	{
+		_mkdir(str_tmp2);
+	}
+}
+
+void CheckorCreateDirs(int replication, int acc, int cacc, std::string paramtersets)
 {	
 	createbase(replication, acc, cacc);
 	createreplicate(replication, acc, cacc);
 	createdetector(replication, acc, cacc);
+	if(paramtersets!="")
+		createparamterbase(replication, acc, cacc, paramtersets);
 }
 
 
@@ -86,8 +102,17 @@ int Init_sim_data_out(double acc_percent, double cacc_percent)
 	char posted_filename[len_str];
 	char sec_filename[len_str];
 
+	
+	std::ifstream infile("C:\\CACC_Simu_Data\\ParameterSet.txt");
+	std::string line;
+	if(infile.is_open() == true)
+	{
+		std::getline(infile, line);
+		std::getline(infile, line);//ignore the first line
+	}
+	infile.close();
 
-	CheckorCreateDirs(replication, (int)(acc_percent*100), (int)(cacc_percent*100));
+	CheckorCreateDirs(replication, (int)(acc_percent*100), (int)(cacc_percent*100), line);
 
 	/*if (use_RM == 0)                                         
 		sprintf_s(dbg_filename,len_str, "C:\\CACC_Simu_Data\\acc%u_cacc%u\\%u\\dbg_file.txt",

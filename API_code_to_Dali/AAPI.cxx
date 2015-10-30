@@ -29,7 +29,8 @@ int AAPIInit()
 	AKIPrintString("\tInit");
 	ANGConnEnableVehiclesInBatch(true);
 	
-	Init();  	
+	Init();  
+
 
 	//****************Added by Dali Wei. Read percentages and volume
 	int mainlane=0;

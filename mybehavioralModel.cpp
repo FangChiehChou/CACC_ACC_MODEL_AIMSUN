@@ -7,6 +7,13 @@
 
 #include "myVehicleDef.h"
 #include <time.h>       /* time_t, struct tm, time, localtime */
+#include <string>
+#include <iostream>
+#include <vector>
+#include <fstream>      // std::ifstream
+#include <algorithm>    // std::find
+#include <stdlib.h>
+#include <iostream>
 
 
 #define MAX(a,b)    (((a)>(b)) ? (a) : (b))
@@ -86,6 +93,8 @@ mybehavioralModel:: mybehavioralModel () : A2BehavioralModel()
 	//	//creat the file if not exist otherwise erase the old data
 	//	CF_Data = fopen(str_tmp,"w+");
 	//}
+	ReadExternalParameters();
+	SetExternalParameters();
 }
 
 mybehavioralModel::~mybehavioralModel () 
@@ -814,3 +823,87 @@ int mybehavioralModel::UpdateLatestArrival(int vid, int secid, int lane_id)
 	}
 }
 
+
+//read parameters from external txt file for parameters
+void mybehavioralModel::ReadExternalParameters()
+{
+	std::ifstream infile("C:\\CACC_Simu_Data\\ParameterSet.txt");
+	std::string line;
+	if(infile.is_open() == false)
+		return;
+	while (std::getline(infile, line))
+	{
+		while(true)
+		{
+			int index = line.find(",");
+			if(index == std::string::npos)
+			{
+				break;
+			}
+			std::string str_interval = line.substr(0, index);
+			int tempindex = str_interval.find(":");
+			std::string key_value = line.substr(0, tempindex);
+			PrintString(key_value);		
+
+			std::string value_string = line.substr(tempindex+1, index-tempindex-1);
+			PrintString(value_string);		
+
+			double param_value = atof(value_string.c_str());
+			hashmap.insert(std::pair<std::string, double>(key_value, param_value));
+
+			line = line.substr(index+1, line.length()-index-1);
+		}		
+		break; //only read one line
+	}
+	infile.close();
+}
+
+void mybehavioralModel::PrintString(std::string key_value)
+{
+	char *cstr = new char[key_value.length() + 1];
+	strcpy(cstr, key_value.c_str());
+	AKIPrintString(cstr);
+	delete(cstr);
+}
+
+void mybehavioralModel::SetExternalParameters()
+{
+	if(this->hashmap.size() <= 0)
+		return;
+	else
+	{
+		int scenario_id = ANGConnGetScenarioId();
+		int exp_id = ANGConnGetExperimentId();
+		typedef std::map<std::string, double>::iterator it_type;
+		for(it_type iterator = hashmap.begin(); iterator != hashmap.end(); iterator++) 
+		{
+			std::string name = iterator->first;
+			double param_value = iterator->second;
+
+			//find a set value
+			int id = 0;
+			if(name.find("sce_")!=std::string::npos)
+			{
+				id = scenario_id;
+			}
+			else if(name.find("exp_")!=std::string::npos)
+			{
+				id = exp_id;	
+			}
+			else if(name.find("car_")!=std::string::npos)
+			{
+				id = CAR;	
+			}
+			else
+			{
+				return;
+			}
+			name.erase(0,4);
+			const unsigned short *temp_str = AKIConvertFromAsciiString(name.c_str());
+			ANGConnSetAttributeValueDouble(
+				ANGConnGetAttribute(temp_str), id, param_value);
+			delete[] temp_str;
+
+		}
+	}
+}
