@@ -4,8 +4,7 @@ clear all;
 close all;
 load('fielddata.mat');
 
-% simulation start time
-start_row = 6*12;
+
 
 % define simulation detector and its corresponding field detector
 field_ids =  [312757, 312771, 312857];

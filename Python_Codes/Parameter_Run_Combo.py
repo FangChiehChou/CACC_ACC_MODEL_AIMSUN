@@ -1,6 +1,7 @@
 __author__ = 'Dali'
 
 import sys
+import datetime
 from PyANGBasic import *
 from PyANGKernel import *
 from PyANGConsole import *
@@ -21,10 +22,12 @@ def simulateMicro(model, replication):
         task.replication=replication
         task.mode = GKReplication.eBatch
         simulator.addSimulationTask( task )
+        print datetime.datetime.now()
         print "simulate"
         resultNow = simulator.simulate()
         print "result: " + str(resultNow)
         print "has simulated"
+        print datetime.datetime.now()
 
 def handleArguments(filename, exp_id):
     print "opening console"

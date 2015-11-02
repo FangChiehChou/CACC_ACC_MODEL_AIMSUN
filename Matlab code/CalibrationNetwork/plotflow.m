@@ -1,8 +1,13 @@
-function [] = plotflow(temp, temp1, detid, figureid)
+function [] = plotflow(temp, temp1, detid, figureid,...
+    figure_title)
+
+if nargin<5
+    figure_title = '';
+end
 
 figure(figureid);
 plot(temp, 'r', 'LineWidth', 2); 
-title(strcat(int2str(detid), ' flow [vphpl]; GEH: ', ...
+title(strcat(figure_title, int2str(detid), ' flow [vphpl]; GEH: ', ...
     num2str(GEH(temp1, temp))));
 hold on;
 ylim([0, 2500]);
