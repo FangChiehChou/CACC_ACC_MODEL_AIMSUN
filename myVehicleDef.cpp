@@ -10,6 +10,9 @@
 #include <algorithm>  
 #include "mybehavioralModel.h"
 #include "vld.h"
+#include <Windows.h>
+#include <sstream>
+#include <string.h>
 
 #define MAX(a,b)    (((a)>(b)) ? (a) : (b))
 #define MIN(a,b)    (((a)<(b)) ? (a) : (b))
@@ -31,7 +34,7 @@
 #define TURNING 5
 
 #define MANDATORY 4
-#define  OPTIONAL 3
+#define OPTIONAL 3
 
 #define RAMP_DECISION_SLOW_DOWN -1
 #define RAMP_DECISION_FOLLOW 1
@@ -284,10 +287,18 @@ void myVehicleDef::UpdateVehicle(double simu_step)
 	// get leader and vehicles on the left/right lane to avoid recalling this function during this update
 	this->leader = this->getLeader();
 	double current_time = AKIGetCurrentSimulationTime();
+
+	//int starttime = GetTimeMs64();
+
 	this->getAroundSpeed();
+
+	//int firsttime = GetTimeMs64();
+	//Print2AIMSUN(firsttime - starttime);
 	
 	this->getAroundLeaderFollowers();
 
+	//int secondtime = GetTimeMs64();
+	//Print2AIMSUN(secondtime - firsttime);
 
 	if(this->getNewArrivalAdjust()==true)
 	{
@@ -314,6 +325,10 @@ void myVehicleDef::UpdateVehicle(double simu_step)
 	{
 		RunACCCACC();
 	}
+
+
+	/*int time3 = GetTimeMs64();
+	Print2AIMSUN(time3 - secondtime);*/
 }
 
 #pragma optimize("",off)
@@ -1549,8 +1564,8 @@ void myVehicleDef::setNewPosition(double pos,double velocity)
 	if(velocity<0)
 	{
 		velocity = 0;
+		pos = this->getPosition()+this->getSpeed()/2*delta_t;
 	}
-	pos = this->getPosition()+this->getSpeed()/2*delta_t;
 	
 	if(this->leader != NULL)
 	{
@@ -3366,7 +3381,7 @@ bool myVehicleDef::DisGapAccepted(double a_L, double a_U, double tau,
 								  bool forward,
 								  double acc_self)
 {
-	if(this->getMandatoryType() == MANDATORY)
+	/*if(this->getMandatoryType() == MANDATORY)
 	{
 		if(lead_v > v)
 		{
@@ -3375,7 +3390,7 @@ bool myVehicleDef::DisGapAccepted(double a_L, double a_U, double tau,
 				return true;
 			}	
 		}
-	}
+	}*/
 
 	//if this is optional LC; only acc > 0 willl be approved
 	/*if(acc_self <= 0 && this->getMandatoryType() == OPTIONAL)
@@ -4300,7 +4315,42 @@ void myVehicleDef::setAccExp(double param1)
 	this->acc_exp = param1;
 }
 
+/* Remove if already defined */
+typedef long long int64; typedef unsigned long long uint64;
 
+/* Returns the amount of milliseconds elapsed since the UNIX epoch. Works on both
+ * windows and linux. */
+
+int myVehicleDef::GetTimeMs64()
+{
+	
+	 /* Windows */
+	 FILETIME ft;
+	 LARGE_INTEGER li;
+
+	 /* Get the amount of 100 nano seconds intervals elapsed since January 1, 1601 (UTC) and copy it
+	  * to a LARGE_INTEGER structure. */
+	 GetSystemTimeAsFileTime(&ft);
+	 li.LowPart = ft.dwLowDateTime;
+	 li.HighPart = ft.dwHighDateTime;
+
+	 uint64 ret = li.QuadPart;
+	 ret -= 116444736000000000LL; /* Convert from file time to UNIX epoch time. */
+	 ret /= 10000; /* From 100 nano seconds (10^-7) to 1 millisecond (10^-3) intervals */
+
+	 return ret;
+	
+}
+
+void myVehicleDef::Print2AIMSUN(int duration)
+{
+	std::stringstream strs;
+	strs << duration;
+	std::string temp_str = strs.str();
+	char* char_type = (char*) temp_str.c_str();
+
+	AKIPrintString(char_type);
+}
 
 
 

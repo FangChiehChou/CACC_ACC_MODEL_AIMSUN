@@ -530,5 +530,7 @@ public:
 		double& headway, 
 		double& l_leader, 
 		double& ref_pos_front);
+	static int GetTimeMs64();
+	void Print2AIMSUN(int secondtime);
 };
 #endif

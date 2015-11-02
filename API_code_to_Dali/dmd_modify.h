@@ -610,8 +610,8 @@ double dmd_generate_section(double time,
 		/*const unsigned short *increase_DLC_close_ramp_str = 
 			AKIConvertFromAsciiString( "section_ramp_type");
 		int ramp_type = ((ANGConnGetAttributeValueInt(
-			ANGConnGetAttribute(increase_DLC_close_ramp_str), id)));
-		delete [] increase_DLC_close_ramp_str;*/
+			ANGConnGetAttribute(increase_DLC_close_ramp_str), id)));*/
+		//delete [] increase_DLC_close_ramp_str;
 		//int lanes = AKIInfNetGetSectionANGInf(id).nbCentralLanes;
 		//delete[] increase_DLC_close_ramp_str;
 

@@ -29,7 +29,9 @@ namespace BatchRun
                 {
                     values[i].Add(lower);
                     lower += increment;
-                }                    
+                }
+                if (values[i].Count == 0)
+                    values[i].Add(lower);
             }
 
             string networkname = Ranges.Network;

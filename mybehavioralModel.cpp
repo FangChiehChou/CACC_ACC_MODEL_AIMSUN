@@ -159,9 +159,9 @@ void mybehavioralModel::updateVehicle( A2SimVehicle *avehicle )
 {
 	//return;
 	double delta_t = getSimStep(); 
-	if(avehicle->getId() == 269 && avehicle->getIdCurrentSection() == 23551
+	/*if(avehicle->getId() == 269 && avehicle->getIdCurrentSection() == 23551
 		&& avehicle->getPosition(0) > 1600)
-		avehicle = avehicle;
+		avehicle = avehicle;*/
 	myVehicleDef *vehicle = (myVehicleDef *)avehicle;
 	/*if (vehicle->LetAimsunHandle()==true)
 		return;*/

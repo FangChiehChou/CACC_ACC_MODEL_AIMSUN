@@ -20,9 +20,10 @@ for i = 1:cols
         
         h_index =int32(double(temp_param.high-temp_param.low)...
             /temp_param.increment);
+        temp_param.values(1)  = temp_param.low;
         for j = 1:h_index
-            inc =double(temp_param.increment*double(j-1));
-            temp_param.values(j) = temp_param.low + inc;
+            inc =double(temp_param.increment*double(j));
+            temp_param.values(j+1) = temp_param.low + inc;
         end
     
         params(1, index) = temp_param;
