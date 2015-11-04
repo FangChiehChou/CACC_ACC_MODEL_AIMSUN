@@ -532,5 +532,6 @@ public:
 		double& ref_pos_front);
 	static int GetTimeMs64();
 	void Print2AIMSUN(int secondtime);
+	void setRelaxationTime(double param);
 };
 #endif

@@ -531,7 +531,7 @@ A2SimVehicle *mybehavioralModel::
 			res->alpha = 0.5; //reaction time
 			res->beta = 1; //jam gap
 			//steps depending on the delta t
-			res->ACF_Steps = 70;
+			res->ACF_Steps = 80;
 			res->ACF_Step = 0;
 			res->Relaxation = 0.5;
 		}
@@ -666,6 +666,12 @@ A2SimVehicle *mybehavioralModel::
 		res->setComfDecRampLC((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(comf_ramplc_str), exp_id)));
 		delete[] comf_ramplc_str;
+
+		const unsigned short *relax_str = 
+			AKIConvertFromAsciiString( "relaxation_time");
+		res->setRelaxationTime((ANGConnGetAttributeValueDouble(
+			ANGConnGetAttribute(relax_str), exp_id)));
+		delete[] relax_str;
 
 		//set gap reduction factors
 		//forward
@@ -841,7 +847,7 @@ void mybehavioralModel::ReadExternalParameters()
 				break;
 			}
 			std::string str_interval = line.substr(0, index);
-			int tempindex = str_interval.find(":");
+			int tempindex = str_interval.find_last_of(":");
 			std::string key_value = line.substr(0, tempindex);
 			PrintString(key_value);		
 

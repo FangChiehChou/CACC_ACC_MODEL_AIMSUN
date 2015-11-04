@@ -1,7 +1,7 @@
 function [ ] = ProcDetData(sim_data, simu_ids, field_ids,...
-    start_row, figure_title)
+    start_row, figure_title, fielddata)
 
-load('fielddata0902.mat');
+load(fielddata);
 [cellrow, cellcol] = size(simu_ids);
 index = 1;
 for j=1:cellcol

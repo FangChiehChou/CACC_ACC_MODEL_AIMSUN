@@ -4352,5 +4352,10 @@ void myVehicleDef::Print2AIMSUN(int duration)
 	AKIPrintString(char_type);
 }
 
+void myVehicleDef::setRelaxationTime(double param)
+{
+	this->ACF_Steps = (int)(param /0.1);
+}
+
 
 

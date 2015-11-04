@@ -23,6 +23,6 @@ for i=1:row
         3164, 'c:\\CACC_Simu_Data\\acc0_cacc0\\');
     title = GenTitle(paracombs(i, :), params);
     ProcDetData(detector_data, ...
-        simu_ids, field_ids, start_row, title);
+        simu_ids, field_ids, start_row, title,'fielddata0903.mat');
     
 end

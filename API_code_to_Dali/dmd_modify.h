@@ -38,7 +38,7 @@ std::map<int,int> orgin_section; // the section that connects the origin
 double global_acc = 0;
 double global_cacc = 0;
 int global_interval = 0; //minutes
-int interval_shift = 11;//in hours
+int interval_shift = 7;//in hours
 
 int dmd_modify(double T)
 {
@@ -607,10 +607,10 @@ double dmd_generate_section(double time,
 		//section id
 		int id = iterator->first;
 
-		/*const unsigned short *increase_DLC_close_ramp_str = 
+		const unsigned short *increase_DLC_close_ramp_str = 
 			AKIConvertFromAsciiString( "section_ramp_type");
 		int ramp_type = ((ANGConnGetAttributeValueInt(
-			ANGConnGetAttribute(increase_DLC_close_ramp_str), id)));*/
+			ANGConnGetAttribute(increase_DLC_close_ramp_str), id)));
 		//delete [] increase_DLC_close_ramp_str;
 		//int lanes = AKIInfNetGetSectionANGInf(id).nbCentralLanes;
 		//delete[] increase_DLC_close_ramp_str;
@@ -675,16 +675,16 @@ double dmd_generate_section(double time,
 						3600.0/(((double)flows[id][time_index][k])/(double)global_interval*60.0));
 				}
 				double min_headway = 1.2;
-				//if (ramp_type == 3 
-				//	////&& ECIGetNumberofControls ()>0
-				//	//&& lanes == 2
-				//	&& time_index >= 72
-				//	&& time_index <= 12*9
-				//	) // on ramp
-				//{
-				//	//continue;
-				//	min_headway = 6;
-				//}
+				if (ramp_type == 3 
+					////&& ECIGetNumberofControls ()>0
+					//&& lanes == 2
+					&& time_index >= 72
+					&& time_index <= 12*9
+					) // on ramp
+				{
+					//continue;
+					min_headway = 6;
+				}
 				int new_time = (int)(RandomExpHeadway(min_headway, avg_headway_flow)/acicle+0.5); //add 0.5 is because the (int) always truncate
 				time_next[id][k] = new_time+current_step;
 			}

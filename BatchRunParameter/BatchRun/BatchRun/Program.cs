@@ -21,14 +21,15 @@ namespace BatchRun
             int size = Ranges.Range.Count;
             for (int i = 0; i < size; i++ )
             {
-                double lower = System.Convert.ToDouble(Ranges.Range[i].low_value);
-                double high = System.Convert.ToDouble(Ranges.Range[i].high_value);
-                double increment = System.Convert.ToDouble(Ranges.Range[i].increment);
+                double lower = Math.Round(System.Convert.ToDouble(Ranges.Range[i].low_value),1);
+                double high = Math.Round(System.Convert.ToDouble(Ranges.Range[i].high_value),1);
+                double increment = Math.Round(System.Convert.ToDouble(Ranges.Range[i].increment), 1);
                 values.Add(new List<double>());
-                while (lower < high)
+                while (lower <= high)
                 {
                     values[i].Add(lower);
                     lower += increment;
+                    lower = Math.Round(lower, 1);
                 }
                 if (values[i].Count == 0)
                     values[i].Add(lower);
