@@ -1041,6 +1041,111 @@ int read_turnings()
 	return 1;
 }
 
+// read surge factor from txt file
+double ReadSurgeFactor()
+{
+	std::ifstream infile("C:\\CACC_Simu_Data\\SurgeFactor.txt");
+	std::string line;
+	double surgefactor=1;
+	if(infile.is_open() == false)
+		return surgefactor;
+	while (std::getline(infile, line))
+	{
+		surgefactor = atof(line.c_str());
+		break; 
+	}
+	infile.close();
+	return surgefactor;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// calculate the automatic surge factor
+//////////////////////////////////////////////////////////////////////////
+double Automatic_surge(int total_count, int total_period, int start_count, int end_count, double& reduction_step)
+{
+
+	double serge_factor = (total_count - (double)(total_period)/2.0*end_count)/
+		((double)(total_period)/2.0*start_count);
+
+	reduction_step = ((serge_factor*start_count-end_count)/(double)(total_period-1));
+
+	return serge_factor;
+
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Modify demand in congested period to compensate the low flow data 
+//////////////////////////////////////////////////////////////////////////
+int modify_demand_congest()
+{
+	//read start and end time for correction period
+	int id = ANGConnGetExperimentId();
+	const unsigned short *demand_start_str = 
+		AKIConvertFromAsciiString( "_surgedemand_start_time");
+	double surge_start = ((ANGConnGetAttributeValueDouble(
+		ANGConnGetAttribute(demand_start_str), id)));	
+
+	const unsigned short *demand_end_str = 
+		AKIConvertFromAsciiString( "_surgedemand_end_time");
+	double surge_end = ((ANGConnGetAttributeValueDouble(
+		ANGConnGetAttribute(demand_end_str), id)));	
+
+	const unsigned short *section_str = 
+		AKIConvertFromAsciiString( "_surge_section");
+	int surge_section = ((ANGConnGetAttributeValueInt(
+		ANGConnGetAttribute(section_str), id)));	
+	
+	//gather the cumulative arrivals during the period
+	double surge_period = surge_end - surge_start;
+	int total_period = floor(surge_period*60.0/(double)global_interval);
+
+	int total_count = 0;
+	for(int i=0; i< total_period; i++)
+	{
+		int period = i + (int)(surge_start*60.0/global_interval);
+		total_count += std::accumulate(flows[surge_section].at(period).begin(), 
+			flows[surge_section].at(period).end(), 0);
+	}
+
+	int start_interval = (int)(surge_start*60.0/global_interval);
+	int start_count = std::accumulate(flows[surge_section].at(start_interval).begin(), 
+		flows[surge_section].at(start_interval).end(), 0);
+
+	int end_interval = (int)(surge_end*60.0/global_interval);
+	int end_count = std::accumulate(flows[surge_section].at(end_interval).begin(), 
+		flows[surge_section].at(end_interval).end(), 0);
+
+	if(end_count >= start_count)
+		return 1;
+
+	//now read the surge factor
+	double surge_factor = ReadSurgeFactor();
+	double reduction_step = 0;
+	surge_factor = Automatic_surge(total_count, total_period, start_count, end_count, 
+		reduction_step);
+
+	//then according to surge factor and reduction adjust the input flow
+	for(int i=0; i< total_period; i++)
+	{
+		int period = i + (int)(surge_start*60.0/global_interval);
+		std::vector<double> ratio;
+		int totaltemp = std::accumulate(flows[surge_section].at(period).begin(), 
+			flows[surge_section].at(period).end(), 0);
+		for(int j=0; j<flows[surge_section].at(period).size();j++)
+		{
+			ratio.push_back((double)flows[surge_section][period][j] /(double)totaltemp);
+		}
+		double surgeflow = round(surge_factor*start_count-i*reduction_step);
+
+		for(int j=0; j<flows[surge_section].at(period).size();j++)
+		{
+			flows[surge_section].at(period)[j] = surgeflow*ratio[j];
+		}
+	}
+	
+	return 1;
+}
+
 // this method read pmes direct txt data output and insert 
 // traffic states based on that file. an example data file is:
 // 5 Minutes	Lane 1 Flow (Veh/5 Minutes)	Lane 2 Flow (Veh/5 Minutes)	Lane 3 Flow (Veh/5 Minutes)	Lane 4 Flow (Veh/5 Minutes)	Lane 5 Flow (Veh/5 Minutes)	Flow (Veh/5 Minutes)	# Lane Points	% Observed
@@ -1063,12 +1168,17 @@ int dmd_create_pems(double ACC_percent, double CACC_percent)
 	shift_str = 0;
 
 	if(read_pems_flow() == 1)
-		if(read_pems_truck_percentage()==1)
+	{
+		if(modify_demand_congest() == 1)
 		{
-			if(read_turnings() == 1)
-				if(create_nexttime() == 1)
-					return 1;
+			if(read_pems_truck_percentage()==1)
+			{
+				if(read_turnings() == 1)
+					if(create_nexttime() == 1)
+						return 1;
+			}
 		}
+	}
 
 	return 0;
 }
