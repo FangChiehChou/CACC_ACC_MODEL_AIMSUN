@@ -566,13 +566,18 @@ double RandomExpHeadway(double min_hwy, double avg_hwy)
 {
 	if(avg_hwy>0)
 	{
-		double laneflow = 3600.0/avg_hwy;
-		double lambda = laneflow / 3600.0 / (1 - min_hwy * laneflow / 3600.0);
-		//double lambda = 1/avg_hwy;
-		double theta = exp(lambda * min_hwy);
-		double x = AKIGetRandomNumber();
-		x = log((1 - x) / theta) / (-lambda);
-		return x ;
+		if(avg_hwy < min_hwy)
+			return min_hwy;
+		else
+		{
+			double laneflow = 3600.0/avg_hwy;
+			double lambda = laneflow / 3600.0 / (1 - min_hwy * laneflow / 3600.0);
+			//double lambda = 1/avg_hwy;
+			double theta = exp(lambda * min_hwy);
+			double x = AKIGetRandomNumber();
+			x = log((1 - x) / theta) / (-lambda);
+			return x ;
+		}
 	}
 	else
 		return 0;
@@ -687,6 +692,8 @@ double dmd_generate_section(double time,
 				}
 				int new_time = (int)(RandomExpHeadway(min_headway, avg_headway_flow)/acicle+0.5); //add 0.5 is because the (int) always truncate
 				time_next[id][k] = new_time+current_step;
+				if(new_time+current_step == 125)
+					new_time = new_time;
 			}
 			
 		}
@@ -1059,18 +1066,40 @@ double ReadSurgeFactor()
 }
 
 //////////////////////////////////////////////////////////////////////////
-// calculate the automatic surge factor
+// calculate the start time of drop and drop rate
+//flow pattern: --------------------   //flat at the beginning
+//                                  \
+//                                   \ 
+//	                                  \
+//									   \   drop rate
+//                                      \
+//                                       \--------------------
+//                                  |time when drop happens
 //////////////////////////////////////////////////////////////////////////
-double Automatic_surge(int total_count, int total_period, int start_count, int end_count, double& reduction_step)
+double Automatic_surge(int total_count, int total_period, int end_count
+					   ,double surge_flow, double& reduction_step)
 {
 
-	double serge_factor = (total_count - (double)(total_period)/2.0*end_count)/
+	/*double serge_factor = (total_count - (double)(total_period)/2.0*end_count)/
 		((double)(total_period)/2.0*start_count);
 
 	reduction_step = ((serge_factor*start_count-end_count)/(double)(total_period-1));
 
-	return serge_factor;
+	return serge_factor;*/
 
+	//double surge_period = 0;
+	//double count_in_surge = surge_period * surge_flow/(double)global_interval; //surge flow is per global interval
+	//
+	//double nf_s = total_period*surge_flow;
+	double delta_fs = surge_flow - end_count;
+	//double drop_period = 2*(nf_s-total_count)/delta_fs;
+
+	//reduction_step = delta_fs/(drop_period-1);
+
+	double n1 = 2*(total_count - end_count*total_period)/delta_fs;
+	reduction_step = delta_fs/(n1-1);
+
+	return n1;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1121,9 +1150,10 @@ int modify_demand_congest()
 	//now read the surge factor
 	double surge_factor = ReadSurgeFactor();
 	double reduction_step = 0;
-	surge_factor = Automatic_surge(total_count, total_period, start_count, end_count, 
+	double high_flow_period = Automatic_surge(total_count, total_period, end_count, surge_factor*start_count,
 		reduction_step);
-
+	//double drop_start = end_interval - drop_period;
+	double surgeflow = surge_factor*start_count;
 	//then according to surge factor and reduction adjust the input flow
 	for(int i=0; i< total_period; i++)
 	{
@@ -1135,7 +1165,10 @@ int modify_demand_congest()
 		{
 			ratio.push_back((double)flows[surge_section][period][j] /(double)totaltemp);
 		}
-		double surgeflow = round(surge_factor*start_count-i*reduction_step);
+		if(period > high_flow_period + start_interval)
+			surgeflow = end_count;
+		else
+			surgeflow = surge_factor*start_count;
 
 		for(int j=0; j<flows[surge_section].at(period).size();j++)
 		{
