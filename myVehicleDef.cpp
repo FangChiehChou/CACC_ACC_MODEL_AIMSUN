@@ -3859,7 +3859,7 @@ void myVehicleDef::AjustArrivalVehicle()
 {
 	//find the last veh on the list of the section with the same lane
 	//and put this vehicle with a equilibrium distance with the leader
-	
+	this->freeflowspeed = A2SimVehicle::getFreeFlowSpeed();
 	if(this->getInitialLeaderId()>0)
 	{
 		int leaderid = getInitialLeaderId();
