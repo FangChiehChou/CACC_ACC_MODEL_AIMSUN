@@ -9,7 +9,6 @@
 #include <hash_map>
 #include <algorithm>  
 #include "mybehavioralModel.h"
-#include "vld.h"
 #include <Windows.h>
 #include <sstream>
 #include <string.h>
