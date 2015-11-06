@@ -276,6 +276,16 @@ bool myVehicleDef::ApplyNGSIMModel()
 
 void myVehicleDef::UpdateVehicle(double simu_step)
 {
+	//if this is a vehicle that has not started, it does not need to look around to get other vehicles' data. 
+	if(this->getNewArrivalAdjust()==true)
+	{
+		//here we need to process so that it spacing regarding the leader
+		//is at equilibrium spacing, otherwise, 
+		//we move this to negative position
+		this->AjustArrivalVehicle();
+		return;
+	}
+
 	this->getSectionInfo();
 
 	delta_t = simu_step;
@@ -300,14 +310,7 @@ void myVehicleDef::UpdateVehicle(double simu_step)
 	//int secondtime = GetTimeMs64();
 	//Print2AIMSUN(secondtime - firsttime);
 
-	if(this->getNewArrivalAdjust()==true)
-	{
-		//here we need to process so that it spacing regarding the leader
-		//is at equilibrium spacing, otherwise, 
-		//we move this to negative position
-		this->AjustArrivalVehicle();
-		return;
-	}
+	
 
 	/*if(this->GetRampType(this->getIdCurrentSection()) == TRUE_ON_RAMP)
 	{
