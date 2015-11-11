@@ -196,12 +196,12 @@ void mybehavioralModel::PrintCACCFollowMsg(myVehicleDef* vehicle, myVehicleDef* 
 	const unsigned short *PrintCFDataStart = AKIConvertFromAsciiString( 
 		"GKExperiment::CFDataRecordStart");
 	int begin_time = ANGConnGetAttributeValueInt( ANGConnGetAttribute( PrintCFDataStart ), exp_id );
-	delete[] PrintCFDataStart;
+	//delete[] PrintCFDataStart;
 
 	const unsigned short *PrintCFDataEnd = AKIConvertFromAsciiString( 
 		"GKExperiment::CFDataRecordEnd");
 	int end_time = ANGConnGetAttributeValueInt( ANGConnGetAttribute( PrintCFDataEnd ), exp_id );
-	delete[] PrintCFDataEnd;
+	//delete[] PrintCFDataEnd;
 
 	if(vehicle->getIdCurrentSection() != SAVE_SECTION 
 		||vehicle->getPosition()<100
@@ -274,51 +274,51 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 	const unsigned short *meanJamString = AKIConvertFromAsciiString( 
 		"GDrivingSimPluging::GKVehicle::Jam Gap Mean" );
 	data.meanJam = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( meanJamString ), vehTypeId );
-	delete[] meanJamString;
+	//delete[] meanJamString;
     
 	const unsigned short *devJamString = AKIConvertFromAsciiString( "GDrivingSimPluging::GKVehicle::Jam Gap Deviation");
 	data.devJam = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( devJamString ), vehTypeId );
-	delete[] devJamString;
+	//delete[] devJamString;
 
 	const unsigned short *maxJamString = AKIConvertFromAsciiString( "GDrivingSimPluging::GKVehicle::Jam Gap Max" );
 	data.maxJam = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( maxJamString ), vehTypeId );
-	delete[] maxJamString;
+	//delete[] maxJamString;
 
 	const unsigned short *minJamString = AKIConvertFromAsciiString( "GDrivingSimPluging::GKVehicle::Jam Gap Minimum" );
 	data.minJam = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( minJamString ), vehTypeId );
-	delete[] minJamString;
+	//delete[] minJamString;
 
     const unsigned short *meanEString = AKIConvertFromAsciiString( "GDrivingSimPluging::GKVehicle::Mean E" );
 	data.meanE = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( meanEString ), vehTypeId );
-	delete[] meanJamString;
+	//delete[] meanJamString;
     
 	const unsigned short *devEString = AKIConvertFromAsciiString( "GDrivingSimPluging::GKVehicle::dev E" );
 	data.devE = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( devEString ), vehTypeId );
-	delete[] devEString;
+	//delete[] devEString;
 
 	const unsigned short *maxEString = AKIConvertFromAsciiString( "GDrivingSimPluging::GKVehicle::Max E" );
 	data.maxE = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( maxEString ), vehTypeId );
-	delete[] maxEString;
+	//delete[] maxEString;
 
 	const unsigned short *minEString = AKIConvertFromAsciiString( "GDrivingSimPluging::GKVehicle::Min E" );
 	data.minE = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( minEString ), vehTypeId );
-	delete[] minEString;
+	//delete[] minEString;
    
 	const unsigned short *meanTString = AKIConvertFromAsciiString( "GDrivingSimPluging::GKVehicle::Mean T" );
 	data.meanT = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( meanTString ), vehTypeId );
-	delete[] meanTString;
+	//delete[] meanTString;
     
 	const unsigned short *devTString = AKIConvertFromAsciiString( "GDrivingSimPluging::GKVehicle::dev T" );
 	data.devT = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( devTString ), vehTypeId );
-	delete[] devTString;
+	//delete[] devTString;
 
 	const unsigned short *maxTString = AKIConvertFromAsciiString( "GDrivingSimPluging::GKVehicle::Max T" );
 	data.maxT = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( maxTString ), vehTypeId );
-	delete[] maxTString;
+	//delete[] maxTString;
 
 	const unsigned short *minTString = AKIConvertFromAsciiString( "GDrivingSimPluging::GKVehicle::Min T" );
 	data.minT = ANGConnGetAttributeValueDouble( ANGConnGetAttribute( minTString ), vehTypeId );
-	delete[] minTString;
+	//delete[] minTString;
 
 	//const unsigned short *distConflictString = AKIConvertFromAsciiString( "GKVehicle::distConflict" );
  //   data.distConflict = ANGConnGetAttributeValueInt( ANGConnGetAttribute( distConflictString ), vehTypeId );
@@ -326,16 +326,16 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 	//set maximum give way time as maximum
 	const unsigned short *giveWayDev = AKIConvertFromAsciiString( "GKVehicle::giveWayDev" );
 	ANGConnSetAttributeValueDouble( ANGConnGetAttribute( giveWayDev ), vehTypeId,0.0);
-	delete[] giveWayDev;
+	//delete[] giveWayDev;
 	const unsigned short *giveWayMax = AKIConvertFromAsciiString( "GKVehicle::giveWayMax" );
 	ANGConnSetAttributeValueDouble( ANGConnGetAttribute( giveWayMax ), vehTypeId,60000000.0);
-	delete[] giveWayMax;
+	//delete[] giveWayMax;
 	const unsigned short *giveWayMin = AKIConvertFromAsciiString( "GKVehicle::giveWayMin" );
 	ANGConnSetAttributeValueDouble( ANGConnGetAttribute( giveWayMin ), vehTypeId,60000000.0);
-	delete[] giveWayMin;
+	//delete[] giveWayMin;
 	const unsigned short *giveWayMean = AKIConvertFromAsciiString( "GKVehicle::giveWayMean" );
 	ANGConnSetAttributeValueDouble( ANGConnGetAttribute( giveWayMean ), vehTypeId,60000000.0);
-	delete[] giveWayMean;
+	//delete[] giveWayMean;
 
 	//setup reaction time
 	const unsigned short *min_reaction_String = 
@@ -343,28 +343,28 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 	data.min_reaction_time = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( min_reaction_String ), vehTypeId );
-	delete[] min_reaction_String;
+	//delete[] min_reaction_String;
 
 	const unsigned short *max_reaction_String = 
 		AKIConvertFromAsciiString( "reaction_time_max_" );
 	data.max_reaction_time = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( max_reaction_String ), vehTypeId );
-	delete[] max_reaction_String;
+	//delete[] max_reaction_String;
 
 	const unsigned short *dev_reaction_String = 
 		AKIConvertFromAsciiString( "reaction_time_dev_");
 	data.dev_reaction_time = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( dev_reaction_String ), vehTypeId );
-	delete[] dev_reaction_String;
+	//delete[] dev_reaction_String;
 
 	const unsigned short *avg_reaction_String = 
 		AKIConvertFromAsciiString( "reaction_time_avg_" );
 	data.avg_reaction_time = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( avg_reaction_String ), vehTypeId );
-	delete[] avg_reaction_String;
+	//delete[] avg_reaction_String;
 
 	//minimum time between lane changes
 	const unsigned short *min_time_lcs_str = 
@@ -372,7 +372,7 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 	data.min_time_between_lc_ = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( min_time_lcs_str ), vehTypeId );
-	delete[] min_time_lcs_str;
+	//delete[] min_time_lcs_str;
 
 	data.min_time_between_lc_=
 		MAX(1, data.min_time_between_lc_);
@@ -383,14 +383,14 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 	data.politeness_ = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( politeness_str ), vehTypeId );
-	delete[] politeness_str;
+	//delete[] politeness_str;
 
 	const unsigned short *politeness_optional_str = 
 		AKIConvertFromAsciiString( "polite_optional");
 	data.politeness_optional = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( politeness_optional_str ), vehTypeId );
-	delete[] politeness_optional_str;
+	//delete[] politeness_optional_str;
 	data.politeness_=
 		MIN(MAX(0, data.politeness_),1);
 	data.politeness_optional = 
@@ -407,28 +407,28 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 	data.min_headway_time = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( min_headway_String ), vehTypeId );
-	delete[] min_headway_String;
+	//delete[] min_headway_String;
 
 	const unsigned short *max_headway_String = 
 		AKIConvertFromAsciiString( "headway_max" );
 	data.max_headway_time = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( max_headway_String ), vehTypeId );
-	delete[] max_headway_String;
+	//delete[] max_headway_String;
 
 	const unsigned short *dev_headway_String = 
 		AKIConvertFromAsciiString( "headway_dev");
 	data.dev_headway_time = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( dev_headway_String ), vehTypeId );
-	delete[] dev_headway_String;
+	//delete[] dev_headway_String;
 
 	const unsigned short *avg_headway_String = 
 		AKIConvertFromAsciiString( "headway_mean" );
 	data.avg_headway_time = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( avg_headway_String ), vehTypeId );
-	delete[] avg_headway_String;
+	//delete[] avg_headway_String;
 
 	//cross-lane friction
 	const unsigned short *friction_String = 
@@ -436,7 +436,7 @@ void mybehavioralModel::readVehTypeData( int vehTypeId)
 	data.friction = 
 		ANGConnGetAttributeValueDouble(
 		ANGConnGetAttribute( friction_String ), vehTypeId );
-	delete[] friction_String;
+	//delete[] friction_String;
 
     vehTypeData[vehTypeId] = data;
 }
@@ -501,19 +501,19 @@ A2SimVehicle *mybehavioralModel::
 			AKIConvertFromAsciiString( "gipps_theta");
 		res->setGippsTheta(ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(gipps_theta_str), exp_id));
-		delete[] gipps_theta_str;
+		//delete[] gipps_theta_str;
 		
 		const unsigned short *leader_max_dec_est_coef_str = 
 			AKIConvertFromAsciiString( "leader_max_dec_est_coef");
 		res->setEstimateLeaderDecCoeff(ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(leader_max_dec_est_coef_str), exp_id));
-		delete[] leader_max_dec_est_coef_str;
+		//delete[] leader_max_dec_est_coef_str;
 		
 		const unsigned short *acc_smooth_factor_str = 
 			AKIConvertFromAsciiString( "acc_smooth_factor");
 		res->setAccSmoothCoef(ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(acc_smooth_factor_str), exp_id));
-		delete[] acc_smooth_factor_str;
+		//delete[] acc_smooth_factor_str;
 
 		//**********************************************
 		//parameters related to lane change
@@ -559,45 +559,45 @@ A2SimVehicle *mybehavioralModel::
 			AKIConvertFromAsciiString( "look_ahead_dis");
 		res->setDLCScanRange(ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(dis_lookahead_str), exp_id));
-		delete[] dis_lookahead_str;
+		//delete[] dis_lookahead_str;
 
 
 		const unsigned short *dis_lookahead_cars_str = 
 			AKIConvertFromAsciiString( "look_ahead_cars");
 		res->setDLCScanNoCars(ANGConnGetAttributeValueInt(
 			ANGConnGetAttribute(dis_lookahead_cars_str), exp_id));
-		delete[] dis_lookahead_cars_str;
+		//delete[] dis_lookahead_cars_str;
 
 		const unsigned short *acc_exp_str = 
 			AKIConvertFromAsciiString( "acc_exponent");
 		res->setAccExp(ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(acc_exp_str), exp_id));
-		delete[] acc_exp_str;
+		//delete[] acc_exp_str;
 
 		//lane change desires
 		const unsigned short *lane_change_desire_thrd_str = 
 			AKIConvertFromAsciiString( "lane_change_desire_thrd");
 		double avg_lc_desire = ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(lane_change_desire_thrd_str), exp_id);
-		delete[] lane_change_desire_thrd_str;
+		//delete[] lane_change_desire_thrd_str;
 		
 		const unsigned short *lane_change_desire_thrd_dev_str = 
 			AKIConvertFromAsciiString( "lane_change_desire_thrd_dev");
 		double lc_desire_dev = ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(lane_change_desire_thrd_dev_str), exp_id);
-		delete[] lane_change_desire_thrd_dev_str;
+		//delete[] lane_change_desire_thrd_dev_str;
 		
 		const unsigned short *lane_change_desire_thrd_min_str = 
 			AKIConvertFromAsciiString( "lane_change_desire_thrd_min");
 		double lc_desire_min = ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(lane_change_desire_thrd_min_str), exp_id);
-		delete[] lane_change_desire_thrd_min_str;
+		//delete[] lane_change_desire_thrd_min_str;
 
 		const unsigned short *lane_change_desire_thrd_max_str = 
 			AKIConvertFromAsciiString( "lane_change_desire_thrd_max");
 		double lc_desire_max = ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(lane_change_desire_thrd_max_str), exp_id);
-		delete[] lane_change_desire_thrd_max_str;
+		//delete[] lane_change_desire_thrd_max_str;
 
 		double lc_desire = sampleNormalDist
 			(avg_lc_desire, lc_desire_dev);
@@ -611,67 +611,67 @@ A2SimVehicle *mybehavioralModel::
 			AKIConvertFromAsciiString( "dlc_coeff");
 		res->setDLCWeight(ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(dlc_coeff), exp_id));
-		delete[] dlc_coeff;
+		//delete[] dlc_coeff;
 
 		const unsigned short *DLC_forbid_zone_before_exit = 
 			AKIConvertFromAsciiString( "DLC_forbid_zone_before_exit");
 		res->setDLCForbidZoneBeforeExit(ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(DLC_forbid_zone_before_exit), exp_id));
-		delete[] DLC_forbid_zone_before_exit;
+		//delete[] DLC_forbid_zone_before_exit;
 
 		const unsigned short *right_DLC_coef = 
 			AKIConvertFromAsciiString( "right_DLC_coef");
 		res->setRightDLCCoeff(ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(right_DLC_coef), exp_id));
-		delete[] right_DLC_coef;
+		//delete[] right_DLC_coef;
 
 		const unsigned short *lc_gap_reduction_factor_str = 
 			AKIConvertFromAsciiString( "lc_gap_reduction_factor");
 		res->setLCGapReductionFactor(ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(lc_gap_reduction_factor_str), exp_id));
-		delete[] lc_gap_reduction_factor_str;
+		//delete[] lc_gap_reduction_factor_str;
 
 		const unsigned short *sequential_merging_str = 
 			AKIConvertFromAsciiString( "sequential_merging");
 		res->SetUnsequentialMerging((ANGConnGetAttributeValueInt(
 			ANGConnGetAttribute(sequential_merging_str), exp_id)>0?true:false));
-		delete[] sequential_merging_str;
+		//delete[] sequential_merging_str;
 
 		const unsigned short *e_off_ramp_str = 
 			AKIConvertFromAsciiString("e_off_ramp");
 		res->setOffRampE((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(e_off_ramp_str), exp_id)));
-		delete[] e_off_ramp_str;
+		//delete[] e_off_ramp_str;
 
 		const unsigned short *t_off_ramp_str = 
 			AKIConvertFromAsciiString( "t_off_ramp");
 		res->setOffRampT((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(t_off_ramp_str), exp_id)));
-		delete[] t_off_ramp_str;
+		//delete[] t_off_ramp_str;
 
 		const unsigned short *penalty_dlc_no_exit_str = 
 			AKIConvertFromAsciiString( "penalty_dlc_no_exit");
 		res->setPenaltyDLCNoExitLane((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(penalty_dlc_no_exit_str), exp_id)));
-		delete[] penalty_dlc_no_exit_str;
+		//delete[] penalty_dlc_no_exit_str;
 
 		const unsigned short *comf_dlc_str = 
 			AKIConvertFromAsciiString( "comf_dec_dlc");
 		res->setComfDecDLC((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(comf_dlc_str), exp_id)));
-		delete[] comf_dlc_str;
+		//delete[] comf_dlc_str;
 
 		const unsigned short *comf_ramplc_str = 
 			AKIConvertFromAsciiString( "comf_dec_ramplc");
 		res->setComfDecRampLC((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(comf_ramplc_str), exp_id)));
-		delete[] comf_ramplc_str;
+		//delete[] comf_ramplc_str;
 
 		const unsigned short *relax_str = 
 			AKIConvertFromAsciiString( "relaxation_time");
 		res->setRelaxationTime((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(relax_str), exp_id)));
-		delete[] relax_str;
+		//delete[] relax_str;
 
 		//set gap reduction factors
 		//forward
@@ -679,31 +679,31 @@ A2SimVehicle *mybehavioralModel::
 			AKIConvertFromAsciiString( "forward_gap_reduction_onramp");
 		res->setForwardGapReductionOnRamp((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(forward_gap_reduction_onramp_str), exp_id)));
-		delete[] forward_gap_reduction_onramp_str;
+		//delete[] forward_gap_reduction_onramp_str;
 
 		const unsigned short *forward_gap_reduction_offramp_str = 
 			AKIConvertFromAsciiString( "forward_gap_reduction_offramp");
 		res->setForwardGapReductionOffRamp((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(forward_gap_reduction_offramp_str), exp_id)));
-		delete[] forward_gap_reduction_offramp_str;
+		//delete[] forward_gap_reduction_offramp_str;
 		//backward
 		const unsigned short *backward_gap_reduction_onramp_str = 
 			AKIConvertFromAsciiString( "backward_gap_reduction_onramp");
 		res->setBackwardGapReductionOnRamp((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(backward_gap_reduction_onramp_str), exp_id)));
-		delete[] backward_gap_reduction_onramp_str;
+		//delete[] backward_gap_reduction_onramp_str;
 		
 		const unsigned short *backward_gap_reduction_offramp_str = 
 			AKIConvertFromAsciiString( "backward_gap_reduction_offramp");
 		res->setBackwardGapReductionOffRamp((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(backward_gap_reduction_offramp_str), exp_id)));
-		delete[] backward_gap_reduction_offramp_str;
+		//delete[] backward_gap_reduction_offramp_str;
 		//
 		const unsigned short *increase_DLC_close_ramp_str = 
 			AKIConvertFromAsciiString( "increase_DLC_close_ramp");
 		res->setIncreaseDLCCloseRamp((ANGConnGetAttributeValueDouble(
 			ANGConnGetAttribute(increase_DLC_close_ramp_str), exp_id)));
-		delete[] increase_DLC_close_ramp_str;
+		//delete[] increase_DLC_close_ramp_str;
 
 		//**********************************************
 
@@ -715,7 +715,7 @@ A2SimVehicle *mybehavioralModel::
 			AKIConvertFromAsciiString( "debug_track_veh_id");
 		res->setDebugTrackID(ANGConnGetAttributeValueInt(
 			ANGConnGetAttribute(debug_track_id_str), exp_id));
-		delete[] debug_track_id_str;
+		//delete[] debug_track_id_str;
 
 		//adjust initial speed and pos if necessary
 		res->setInitialLeaderId(UpdateLatestArrival(res->getId(), 
@@ -734,7 +734,7 @@ std::string mybehavioralModel::ReadModel()
 		"GKScenario::ModelCode");
 	int modelcode= 
 		ANGConnGetAttributeValueInt(ANGConnGetAttribute( Model ), scenario_id);
-	delete[] Model;
+	//delete[] Model;
 	switch(modelcode)
 	{
 		default:
@@ -796,7 +796,7 @@ int mybehavioralModel::ReadGapModel(int exp_id)
 		"gap_model");
 	int temp = ANGConnGetAttributeValueInt(ANGConnGetAttribute(gap_model_code), exp_id);
 
-	delete[] gap_model_code;
+	//delete[] gap_model_code;
 	return temp;
 }
 
@@ -908,7 +908,7 @@ void mybehavioralModel::SetExternalParameters()
 			const unsigned short *temp_str = AKIConvertFromAsciiString(name.c_str());
 			ANGConnSetAttributeValueDouble(
 				ANGConnGetAttribute(temp_str), id, param_value);
-			delete[] temp_str;
+			//delete[] temp_str;
 
 		}
 	}

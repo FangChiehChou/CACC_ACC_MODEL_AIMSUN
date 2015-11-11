@@ -57,7 +57,13 @@ int AAPIInit()
 		AAPIUnLoad();
 		return 0;
 	}
-	
+
+	//set the length to avoid queue spill-back
+	/*int section_id = 330;
+	const unsigned short *length_str = 
+		AKIConvertFromAsciiString( "GKSectionObject::lengthAtt");
+	ANGConnSetAttributeValueInt(
+		ANGConnGetAttribute(length_str), section_id, 5000);	*/
 
 	//****************
 	init_data_saving(replication,(int)( acc_percent*100),(int)(cacc_percent*100));

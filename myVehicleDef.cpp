@@ -12,6 +12,7 @@
 #include <Windows.h>
 #include <sstream>
 #include <string.h>
+#include <time.h>
 
 #define MAX(a,b)    (((a)>(b)) ? (a) : (b))
 #define MIN(a,b)    (((a)<(b)) ? (a) : (b))
@@ -80,6 +81,8 @@
 #define FORBID_RAMPCHANGE_ZONE 0 //Length of on-ramp acceleration lane[m]
 
 #define MIN_DLC_SPEED_DIFF 2.34 //5 [mph]
+
+
 
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
@@ -275,6 +278,8 @@ bool myVehicleDef::ApplyNGSIMModel()
 
 void myVehicleDef::UpdateVehicle(double simu_step)
 {
+
+	//clock_t tStart = clock();
 	//if this is a vehicle that has not started, it does not need to look around to get other vehicles' data. 
 	if(this->getNewArrivalAdjust()==true)
 	{
@@ -283,6 +288,11 @@ void myVehicleDef::UpdateVehicle(double simu_step)
 		//we move this to negative position
 		this->AjustArrivalVehicle();
 		return;
+
+		//move all vehicles starting position as a way off negative value so
+		//as to make sure queue will not spill back to this point
+		//this->setNewPosition(START_POSITION, A2SimVehicle::getFreeFlowSpeed());
+		
 	}
 
 	this->getSectionInfo();
@@ -308,7 +318,6 @@ void myVehicleDef::UpdateVehicle(double simu_step)
 
 	//int secondtime = GetTimeMs64();
 	//Print2AIMSUN(secondtime - firsttime);
-
 	
 
 	/*if(this->GetRampType(this->getIdCurrentSection()) == TRUE_ON_RAMP)
@@ -328,9 +337,8 @@ void myVehicleDef::UpdateVehicle(double simu_step)
 		RunACCCACC();
 	}
 
-
 	/*int time3 = GetTimeMs64();
-	Print2AIMSUN(time3 - secondtime);*/
+	Print2AIMSUN((double)(clock() - tStart));*/
 }
 
 #pragma optimize("",off)
@@ -783,14 +791,21 @@ int myVehicleDef::GapAcceptDecision_Sync_First()
 		d_leader  = - 
 			(this->getSpeed() *this->getSpeed()) 
 			/ (2*this->getMAXdec())*this->Relaxation;
+
 		
 		up_headway = this->getPositionReferenceVeh(((myVehicleDef *)vehUp));
+			
+
 		//the lane changer has no information about the min-headway of 
 		//the follower so assume it is the same
 		min_headway = this->getDesireHeadway()*Relaxation;
 		/*if(vehUp->getIdCurrentSection() == this->getIdCurrentSection())
 		{*/
-		if(up_headway - getLength()
+		if(up_headway < 0) //means the car is traveling in the opposite direction)
+		{
+			Ok_upstream_gap = true;
+		}
+		else if(up_headway - getLength()
 			//- getJamGap()*alpha
 			<=0)
 		{
@@ -3759,7 +3774,7 @@ int myVehicleDef::GetRampType(int sec_id)
 		AKIConvertFromAsciiString( "section_ramp_type");
 	int sec_type = ((ANGConnGetAttributeValueInt(
 		ANGConnGetAttribute(increase_DLC_close_ramp_str), sec_id)));
-	delete[] increase_DLC_close_ramp_str;
+	//delete[] increase_DLC_close_ramp_str;
 	return sec_type;
 
 }
@@ -3773,7 +3788,7 @@ bool myVehicleDef::IsSectionSource(int sec_id)
 		AKIConvertFromAsciiString( "bool_section_source");
 	 bool temp = ((ANGConnGetAttributeValueBool(
 		ANGConnGetAttribute(is_section_source_str), sec_id)));
-	 delete[] is_section_source_str;
+	 //delete[] is_section_source_str;
 	 return temp;
 }
 
@@ -3890,6 +3905,7 @@ void myVehicleDef::AjustArrivalVehicle()
 						//that is when the acceleration equal zero and 
 						//the speed is at its desired speed
 						double v = MIN(info_veh.CurrentSpeed/3.6, freeflowspeed);// be careful, here info_veh speed is in [km/h]
+						v = freeflowspeed;
 						double eq_pos = GetEquPosition(info_veh.CurrentPos,
 							leader_length, v);
 						if(eq_pos<0)
@@ -3913,7 +3929,7 @@ void myVehicleDef::AjustArrivalVehicle()
 							}
 							else
 							{					
-								setNewPosition(this->getPosition(),
+								setNewPosition(this->getPosition()+0.1,
 									v);
 								this->setNewArrivalAdjust(false);
 								setFirstCycleAfterAdjust(true);
@@ -4345,6 +4361,16 @@ int myVehicleDef::GetTimeMs64()
 }
 
 void myVehicleDef::Print2AIMSUN(int duration)
+{
+	std::stringstream strs;
+	strs << duration;
+	std::string temp_str = strs.str();
+	char* char_type = (char*) temp_str.c_str();
+
+	AKIPrintString(char_type);
+}
+
+void myVehicleDef::Print2AIMSUN(double duration)
 {
 	std::stringstream strs;
 	strs << duration;

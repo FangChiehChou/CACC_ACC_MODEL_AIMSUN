@@ -42,12 +42,13 @@ for j=1:key_col
     key = det_ids_key{1, j};
     temp = simu_speed_pair(key);
     temp1 = field_speed_pair(key);
-    plotspeed(temp, temp1, key, 2*j, figure_title);
+    plotspeed(temp, temp1, key, 3*j, figure_title);
 
     temp = simu_flow_pair(key);
     temp1 = field_flow_pair(key);
-    plotflow(temp, temp1, key, 2*j+1, figure_title);
-
+    plotflow(temp, temp1, key, 3*j+1, figure_title);
+    
+    plotcumulativeflow(temp/12, temp1/12, key, 3*j+2, figure_title);
 end
 end
 

@@ -10,6 +10,7 @@ function data = ReadDetector(values,rep_id, parent)
     
     folder = strcat(parent, num2str(rep_id), '\\detector\\', folder );
     filename = strcat(folder, '\\detector_run.txt');
+%     filename = strcat(parent, '\\detector_run.txt');
     fileID_merge = fopen(filename);
     sim_data = textscan(fileID_merge,...
         '%f %f %f %f %f %f %f',...

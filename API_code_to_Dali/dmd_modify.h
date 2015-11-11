@@ -661,6 +661,8 @@ double dmd_generate_section(double time,
 					}
 				}
 
+				// if the car cannot be put there we don't put there
+				// instead we put it on a queue and evaluate queue each time
 				int res = 
 					AKIPutVehTrafficFlow(
 					id,times.size()-k,
@@ -711,18 +713,18 @@ int dmd_generate_matrix(double time,
 	//get simulation steps
 	int current_step =(int)(round(time/acicle));
 	//iterate of vector
-	for(int i=0;i<time_next.size();i++)
+	for(int i=0;i<time_next.size();++i)
 	{
 		if(time>=AKIODDemandGetIniTimeSlice(1, i)&&
 			time<AKIODDemandGetEndTimeSlice(1, i))
 		{
-			for(int j=0;j<AKIInfNetNbCentroids();j++)
+			for(int j=0;j<AKIInfNetNbCentroids();++j)
 			{
 				int origin = AKIInfNetGetCentroidId(j);
 				if(time_next.find(origin)!=time_next.end())
 				{
 					std::vector<int> times = time_next[origin];
-					for(int k=0;k<times.size();k++)
+					for(int k=0;k<times.size();++k)
 					{
 						int next_time = times.at(k);
 						if(next_time == current_step)
@@ -732,7 +734,7 @@ int dmd_generate_matrix(double time,
 							double rand_num = AKIGetRandomNumber();
 							std::map<int,double>::iterator _iterator;
 							//go over the destinations
-							for(_iterator = dest[origin].begin(); _iterator != dest[origin].end(); _iterator++)
+							for(_iterator = dest[origin].begin(); _iterator != dest[origin].end(); ++_iterator)
 							{
 							//for(int n=0;n<dest[origin].size();n++)
 							//{
@@ -1152,8 +1154,9 @@ int modify_demand_congest()
 	double reduction_step = 0;
 	double high_flow_period = Automatic_surge(total_count, total_period, end_count, surge_factor*start_count,
 		reduction_step);
+	//high_flow_period = 6;
 	//double drop_start = end_interval - drop_period;
-	double surgeflow = surge_factor*start_count;
+	double surgeflow = surge_factor*start_count + reduction_step;
 	//then according to surge factor and reduction adjust the input flow
 	for(int i=0; i< total_period; i++)
 	{
@@ -1168,7 +1171,7 @@ int modify_demand_congest()
 		if(period > high_flow_period + start_interval)
 			surgeflow = end_count;
 		else
-			surgeflow = surge_factor*start_count;
+			surgeflow -= reduction_step;
 
 		for(int j=0; j<flows[surge_section].at(period).size();j++)
 		{
